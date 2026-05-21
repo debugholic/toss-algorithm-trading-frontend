@@ -197,7 +197,6 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
   gap: 20px;
 }
 
-.gate-card { border-left: 4px solid #f59e0b; }
 
 .card-title {
   font-size: 18px;

@@ -8,6 +8,14 @@ export async function fetchPortfolio() {
     .limit(1)
     .single()
   if (error) throw error
+  const positions = (data.positions ?? []).map(p => ({
+    ...p,
+    current_price: p.current_price ?? p.avg_price ?? 0,
+    eval_amount:   p.eval_amount   ?? (p.shares * (p.avg_price ?? 0)),
+    pnl:           p.pnl           ?? 0,
+    pnl_pct:       p.pnl_pct       ?? 0,
+    peak_pnl_pct:  p.peak_pnl_pct  ?? 0,
+  }))
   return {
     summary: {
       total_asset:   data.total_asset,
@@ -16,7 +24,7 @@ export async function fetchPortfolio() {
       total_eval:    data.total_eval,
       cash:          data.cash,
     },
-    positions: data.positions ?? [],
+    positions,
   }
 }
 
@@ -51,8 +59,13 @@ export async function fetchScans() {
 }
 
 export async function fetchPending() {
-  // pending_orders는 NAS 로컬 — Supabase 미지원, 빈 객체 반환
-  return {}
+  const { data, error } = await supabase
+    .from('pending_orders')
+    .select('data')
+    .eq('id', 1)
+    .single()
+  if (error) return {}
+  return data?.data ?? {}
 }
 
 export async function fetchConfig() {
