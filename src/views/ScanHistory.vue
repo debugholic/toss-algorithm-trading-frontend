@@ -83,7 +83,6 @@ h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
   margin-bottom: 16px;
 }
 
-.pending-section { border-left: 4px solid #f59e0b; }
 
 .section-list { display: flex; flex-direction: column; gap: 8px; }
 
