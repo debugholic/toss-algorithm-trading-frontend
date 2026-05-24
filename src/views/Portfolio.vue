@@ -28,12 +28,12 @@
           </div>
         </div>
         <div class="metric">
-          <div class="label">🇰🇷 국내 평가</div>
-          <div class="value">{{ fmt(s.kr_eval) }}원</div>
-        </div>
-        <div class="metric">
-          <div class="label">🇺🇸 해외 평가</div>
-          <div class="value">{{ fmt(s.us_eval) }}원</div>
+          <div class="label">평가금액</div>
+          <div class="value">{{ fmt(s.total_eval) }}원</div>
+          <div class="sub-row">
+            <span class="sub">🇰🇷 {{ fmt(s.kr_eval) }}</span>
+            <span class="sub">🇺🇸 {{ fmt(s.us_eval) }}</span>
+          </div>
         </div>
         <div class="metric">
           <div class="label">현금</div>
@@ -136,8 +136,9 @@ const chartOptions = {
     }
   }},
   scales: {
-    x: { grid: { display: false }, ticks: { maxTicksLimit: 6, font: { size: 11 }, color: '#aaa' } },
+    x: { display: false },
     y: {
+      grace: '10%',
       grid: { color: '#f0f0f0' },
       ticks: { font: { size: 11 }, color: '#aaa', callback: v => `${v >= 0 ? '+' : ''}${v}%` },
       border: { display: false },
@@ -202,7 +203,7 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; alig
 
 .metrics {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 32px;
 }
@@ -215,7 +216,8 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; alig
 }
 .metric .label { font-size: 13px; color: #666; margin-bottom: 6px; }
 .metric .value { font-size: 22px; font-weight: 700; }
-.metric .sub { font-size: 13px; margin-top: 4px; }
+.metric .sub { font-size: 12px; margin-top: 4px; color: #888; }
+.sub-row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
 
 .section { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow-x: auto; margin-bottom: 20px; }
 .chart-section { overflow: visible; }
@@ -235,9 +237,9 @@ tr:last-child td { border-bottom: none; }
 
 @media (max-width: 768px) {
   .metrics { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+  .metric .value { font-size: 18px; }
   h2 { font-size: 15px; }
   .metric { padding: 14px; }
-  .metric .value { font-size: 18px; }
   .section { padding: 16px; overflow-x: visible; margin-bottom: 16px; }
   h1 { font-size: 18px; margin-bottom: 16px; }
 

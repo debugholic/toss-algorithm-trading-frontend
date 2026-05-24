@@ -222,7 +222,7 @@ onMounted(async () => {
 h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .caption { color: #888; font-size: 13px; margin-bottom: 24px; }
 
-.strategy-layout { display: flex; flex-direction: column; gap: 20px; }
+.strategy-layout { display: flex; flex-direction: column; gap: 20px; overflow-x: clip; }
 
 /* 성과 테이블 */
 .perf-section { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
