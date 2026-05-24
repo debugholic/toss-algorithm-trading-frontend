@@ -10,19 +10,29 @@ export async function fetchPortfolio() {
   if (error) throw error
   const positions = (data.positions ?? []).map(p => ({
     ...p,
+    market:        p.market ?? 'KR',
     current_price: p.current_price ?? p.avg_price ?? 0,
     eval_amount:   p.eval_amount   ?? (p.shares * (p.avg_price ?? 0)),
     pnl:           p.pnl           ?? 0,
     pnl_pct:       p.pnl_pct       ?? 0,
     peak_pnl_pct:  p.peak_pnl_pct  ?? 0,
   }))
+
+  const krPositions = positions.filter(p => p.market !== 'US')
+  const usPositions = positions.filter(p => p.market === 'US')
+  const krEval = krPositions.reduce((sum, p) => sum + (p.eval_amount ?? 0), 0)
+  const usEval = usPositions.reduce((sum, p) => sum + (p.eval_amount ?? 0), 0)
+
   return {
     summary: {
       total_asset:   data.total_asset,
       total_pnl:     data.total_pnl,
       total_pnl_pct: data.total_pnl_pct,
       total_eval:    data.total_eval,
+      kr_eval:       krEval,
+      us_eval:       usEval,
       cash:          data.cash,
+      usd_rate:      data.usd_rate ?? null,
     },
     positions,
   }
@@ -45,6 +55,7 @@ export async function fetchTrades() {
     pnl:      t.pnl,
     pnl_pct:  t.pnl_pct,
     strategy: t.strategy,
+    market:   t.market ?? 'KR',
   }))
 }
 

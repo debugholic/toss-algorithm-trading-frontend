@@ -4,6 +4,7 @@
 
     <div v-if="loading" class="empty">불러오는 중...</div>
     <template v-else>
+      <!-- 요약 메트릭 -->
       <div class="metrics">
         <div class="metric">
           <div class="label">총 자산</div>
@@ -19,8 +20,12 @@
           </div>
         </div>
         <div class="metric">
-          <div class="label">평가금액</div>
-          <div class="value">{{ fmt(s.total_eval) }}원</div>
+          <div class="label">🇰🇷 국내 평가</div>
+          <div class="value">{{ fmt(s.kr_eval) }}원</div>
+        </div>
+        <div class="metric">
+          <div class="label">🇺🇸 해외 평가</div>
+          <div class="value">{{ fmt(s.us_eval) }}원</div>
         </div>
         <div class="metric">
           <div class="label">현금</div>
@@ -28,9 +33,10 @@
         </div>
       </div>
 
+      <!-- 국내 주식 섹션 -->
       <div class="section">
-        <h2>보유 종목</h2>
-        <div v-if="!positions.length" class="empty">보유 종목 없음</div>
+        <h2>🇰🇷 국내 주식</h2>
+        <div v-if="!krPositions.length" class="empty">보유 종목 없음</div>
         <table v-else>
           <thead>
             <tr>
@@ -41,7 +47,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="p in positions" :key="p.code">
+            <tr v-for="p in krPositions" :key="p.code">
               <td>{{ p.code }}</td>
               <td>{{ p.name }}</td>
               <td>{{ p.shares }}</td>
@@ -57,20 +63,57 @@
           </tbody>
         </table>
       </div>
+
+      <!-- 해외 주식 섹션 -->
+      <div class="section">
+        <h2>
+          🇺🇸 해외 주식
+          <span v-if="s.usd_rate" class="exchange-rate">USD/KRW {{ s.usd_rate.toLocaleString() }}원</span>
+        </h2>
+        <div v-if="!usPositions.length" class="empty">보유 종목 없음</div>
+        <table v-else>
+          <thead>
+            <tr>
+              <th>코드</th><th>종목명</th><th>수량</th>
+              <th>평균단가(USD)</th><th>현재가(USD)</th><th>평가금액</th>
+              <th>손익</th><th>수익률</th><th>최고수익</th>
+              <th>매수일</th><th>전략</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in usPositions" :key="p.code">
+              <td>{{ p.code }}</td>
+              <td>{{ p.name }}</td>
+              <td>{{ p.shares }}</td>
+              <td>${{ fmtUsd(p.avg_price) }}</td>
+              <td>${{ fmtUsd(p.current_price) }}</td>
+              <td>{{ fmt(p.eval_amount) }}원</td>
+              <td :class="p.pnl >= 0 ? 'pos' : 'neg'">{{ p.pnl >= 0 ? '+' : '' }}{{ fmt(p.pnl) }}</td>
+              <td :class="p.pnl_pct >= 0 ? 'pos' : 'neg'">{{ p.pnl_pct >= 0 ? '+' : '' }}{{ p.pnl_pct.toFixed(2) }}%</td>
+              <td class="peak">{{ p.peak_pnl_pct > 0 ? p.peak_pnl_pct.toFixed(1) + '%' : '-' }}</td>
+              <td>{{ p.buy_date }}</td>
+              <td>{{ fmtStrategy(p.strategy) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { fetchPortfolio } from '../api.js'
 
 const loading = ref(true)
-const s = ref({ total_asset: 0, total_pnl: 0, total_pnl_pct: 0, total_eval: 0, cash: 0 })
+const s = ref({ total_asset: 0, total_pnl: 0, total_pnl_pct: 0, total_eval: 0, kr_eval: 0, us_eval: 0, cash: 0, usd_rate: null })
 const positions = ref([])
 let timer
 
-const labels = { ma_cross: 'MA크로스', rsi_reversal: 'RSI역발산' }
+const krPositions = computed(() => positions.value.filter(p => p.market !== 'US'))
+const usPositions = computed(() => positions.value.filter(p => p.market === 'US'))
+
+const labels = { ma_cross: 'MA크로스', rsi_reversal: 'RSI역발산', bb_reversal: 'BB반등', breakout_52w: '52주신고가' }
 const fmtStrategy = v => (Array.isArray(v) ? v : [v]).map(x => labels[x] || x).join('+')
 const fmt = n => {
   const rounded = Math.round(n)
@@ -78,6 +121,7 @@ const fmt = n => {
   const str = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return rounded < 0 ? '-' + str : str
 }
+const fmtUsd = n => (n == null ? '-' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
 
 async function load() {
   try {
@@ -95,11 +139,12 @@ onUnmounted(() => clearInterval(timer))
 
 <style scoped>
 h1 { font-size: 22px; font-weight: 700; margin-bottom: 24px; }
-h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+.exchange-rate { font-size: 12px; font-weight: 400; color: #888; background: #f3f4f6; padding: 2px 8px; border-radius: 10px; }
 
 .metrics {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 16px;
   margin-bottom: 32px;
 }
@@ -128,6 +173,7 @@ tr:last-child td { border-bottom: none; }
 
 @media (max-width: 768px) {
   .metrics { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+  h2 { font-size: 15px; }
   .metric { padding: 14px; }
   .metric .value { font-size: 18px; }
   .section { padding: 12px; overflow-x: visible; }

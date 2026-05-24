@@ -45,17 +45,18 @@
           <table>
             <thead>
               <tr>
-                <th>일시</th><th>구분</th><th>종목명</th><th>수량</th>
+                <th>일시</th><th>마켓</th><th>구분</th><th>종목명</th><th>수량</th>
                 <th>단가</th><th>금액</th><th>손익</th><th>수익률</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(t, i) in byDate[selectedDate].trades" :key="i">
                 <td>{{ t.date }}</td>
+                <td>{{ t.market === 'US' ? '🇺🇸' : '🇰🇷' }}</td>
                 <td :class="t.type === 'BUY' ? 'buy' : 'sell'">{{ t.type }}</td>
                 <td>{{ t.name }}</td>
                 <td>{{ t.shares }}</td>
-                <td>{{ t.price != null ? fmt(t.price) : '-' }}</td>
+                <td>{{ t.price != null ? (t.market === 'US' ? '$' + fmtUsd(t.price) : fmt(t.price)) : '-' }}</td>
                 <td>{{ t.amount != null ? fmt(t.amount) : '-' }}</td>
                 <td :class="(t.pnl || 0) >= 0 ? 'pos' : 'neg'">
                   {{ t.pnl != null ? ((t.pnl >= 0 ? '+' : '') + fmt(t.pnl)) : '-' }}
@@ -85,6 +86,7 @@ const fmt = n => {
   const str = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return rounded < 0 ? '-' + str : str
 }
+const fmtUsd = n => (n == null ? '-' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
 
 const months = computed(() => {
   const s = new Set(trades.value.map(t => t.date.slice(0, 7)))
@@ -222,14 +224,15 @@ h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 th { text-align: left; padding: 8px 10px; border-bottom: 2px solid #eee; color: #555; font-weight: 600; white-space: nowrap; overflow: hidden; }
 td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-th:nth-child(1) { width: 18%; } /* 일시 */
-th:nth-child(2) { width: 7%; }  /* 구분 */
-th:nth-child(3) { width: 16%; } /* 종목명 */
-th:nth-child(4) { width: 7%; }  /* 수량 */
-th:nth-child(5) { width: 13%; } /* 단가 */
-th:nth-child(6) { width: 13%; } /* 금액 */
-th:nth-child(7) { width: 13%; } /* 손익 */
-th:nth-child(8) { width: 13%; } /* 수익률 */
+th:nth-child(1) { width: 16%; } /* 일시 */
+th:nth-child(2) { width: 6%; }  /* 마켓 */
+th:nth-child(3) { width: 6%; }  /* 구분 */
+th:nth-child(4) { width: 15%; } /* 종목명 */
+th:nth-child(5) { width: 6%; }  /* 수량 */
+th:nth-child(6) { width: 13%; } /* 단가 */
+th:nth-child(7) { width: 13%; } /* 금액 */
+th:nth-child(8) { width: 12%; } /* 손익 */
+th:nth-child(9) { width: 13%; } /* 수익률 */
 tr:last-child td { border-bottom: none; }
 
 .pos { color: #e74c3c; }
@@ -271,12 +274,13 @@ tr:last-child td { border-bottom: none; }
     margin-right: 8px;
   }
   .table-wrap td:nth-child(1)::before { content: '일시'; }
-  .table-wrap td:nth-child(2)::before { content: '구분'; }
-  .table-wrap td:nth-child(3)::before { content: '종목명'; }
-  .table-wrap td:nth-child(4)::before { content: '수량'; }
-  .table-wrap td:nth-child(5)::before { content: '단가'; }
-  .table-wrap td:nth-child(6)::before { content: '금액'; }
-  .table-wrap td:nth-child(7)::before { content: '손익'; }
-  .table-wrap td:nth-child(8)::before { content: '수익률'; }
+  .table-wrap td:nth-child(2)::before { content: '마켓'; }
+  .table-wrap td:nth-child(3)::before { content: '구분'; }
+  .table-wrap td:nth-child(4)::before { content: '종목명'; }
+  .table-wrap td:nth-child(5)::before { content: '수량'; }
+  .table-wrap td:nth-child(6)::before { content: '단가'; }
+  .table-wrap td:nth-child(7)::before { content: '금액'; }
+  .table-wrap td:nth-child(8)::before { content: '손익'; }
+  .table-wrap td:nth-child(9)::before { content: '수익률'; }
 }
 </style>
