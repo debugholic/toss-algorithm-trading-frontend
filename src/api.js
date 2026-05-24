@@ -79,6 +79,19 @@ export async function fetchPending() {
   return data?.data ?? {}
 }
 
+export async function fetchSnapshotHistory() {
+  const { data, error } = await supabase
+    .from('portfolio_snapshots')
+    .select('snapshotted_at, total_pnl_pct')
+    .order('snapshotted_at', { ascending: true })
+    .limit(90)
+  if (error) throw error
+  return data.map(d => ({
+    date: d.snapshotted_at.slice(0, 10),
+    pnl_pct: Math.round(d.total_pnl_pct * 100) / 100,
+  }))
+}
+
 export async function fetchStrategyStats() {
   const { data, error } = await supabase
     .from('trades')

@@ -4,6 +4,14 @@
 
     <div v-if="loading" class="empty">불러오는 중...</div>
     <template v-else>
+      <!-- 수익률 추이 차트 -->
+      <div class="section chart-section" v-if="chartData">
+        <h2>수익률 추이</h2>
+        <div class="chart-wrap">
+          <Line :data="chartData" :options="chartOptions" />
+        </div>
+      </div>
+
       <!-- 요약 메트릭 -->
       <div class="metrics">
         <div class="metric">
@@ -103,12 +111,39 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { fetchPortfolio } from '../api.js'
+import { Line } from 'vue-chartjs'
+import {
+  Chart as ChartJS, CategoryScale, LinearScale, PointElement,
+  LineElement, Tooltip, Filler
+} from 'chart.js'
+import { fetchPortfolio, fetchSnapshotHistory } from '../api.js'
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
 const loading = ref(true)
 const s = ref({ total_asset: 0, total_pnl: 0, total_pnl_pct: 0, total_eval: 0, kr_eval: 0, us_eval: 0, cash: 0, usd_rate: null })
 const positions = ref([])
+const chartData = ref(null)
 let timer
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  interaction: { mode: 'index', intersect: false },
+  plugins: { legend: { display: false }, tooltip: {
+    callbacks: {
+      label: ctx => `  ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}%`
+    }
+  }},
+  scales: {
+    x: { grid: { display: false }, ticks: { maxTicksLimit: 6, font: { size: 11 }, color: '#aaa' } },
+    y: {
+      grid: { color: '#f0f0f0' },
+      ticks: { font: { size: 11 }, color: '#aaa', callback: v => `${v >= 0 ? '+' : ''}${v}%` },
+      border: { display: false },
+    }
+  }
+}
 
 const krPositions = computed(() => positions.value.filter(p => p.market !== 'US'))
 const usPositions = computed(() => positions.value.filter(p => p.market === 'US'))
@@ -125,9 +160,32 @@ const fmtUsd = n => (n == null ? '-' : Number(n).toLocaleString('en-US', { minim
 
 async function load() {
   try {
-    const data = await fetchPortfolio()
+    const [data, history] = await Promise.all([fetchPortfolio(), fetchSnapshotHistory()])
     s.value = data.summary
     positions.value = data.positions
+
+    if (history.length > 1) {
+      const isProfit = history[history.length - 1].pnl_pct >= 0
+      const color = isProfit ? '#dc2626' : '#2563eb'
+      chartData.value = {
+        labels: history.map(h => h.date),
+        datasets: [{
+          data: history.map(h => h.pnl_pct),
+          borderColor: color,
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          fill: true,
+          backgroundColor: ctx => {
+            const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height)
+            gradient.addColorStop(0, isProfit ? 'rgba(220,38,38,0.15)' : 'rgba(37,99,235,0.15)')
+            gradient.addColorStop(1, 'rgba(255,255,255,0)')
+            return gradient
+          },
+          tension: 0.3,
+        }]
+      }
+    }
   } finally {
     loading.value = false
   }
@@ -160,6 +218,10 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; alig
 .metric .sub { font-size: 13px; margin-top: 4px; }
 
 .section { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow-x: auto; }
+.chart-section { overflow: visible; }
+.chart-wrap { height: 220px; }
+
+@media (max-width: 768px) { .chart-wrap { height: 160px; } }
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { text-align: left; padding: 8px 10px; border-bottom: 2px solid #eee; color: #555; font-weight: 600; white-space: nowrap; }
