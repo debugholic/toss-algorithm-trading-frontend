@@ -234,6 +234,43 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .profit { color: #dc2626; font-weight: 600; }
 .loss   { color: #1d4ed8; font-weight: 600; }
 
+@media (max-width: 768px) {
+  .perf-section { padding: 16px; }
+  .perf-table thead { display: none; }
+  .perf-table tbody, .perf-table tr { display: block; }
+  .perf-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .perf-table tr:last-child { border-bottom: none; }
+  .perf-table td {
+    padding: 3px 4px;
+    border-bottom: none;
+    font-size: 13px;
+  }
+  .perf-table td:first-child {
+    grid-column: 1 / -1;
+    font-weight: 700;
+    font-size: 14px;
+    color: #1a1a2e;
+    padding-bottom: 6px;
+  }
+  .perf-table td::before {
+    display: block;
+    font-size: 11px;
+    color: #aaa;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .perf-table td:nth-child(2)::before { content: '거래수'; }
+  .perf-table td:nth-child(3)::before { content: '승률'; }
+  .perf-table td:nth-child(4)::before { content: '평균수익률'; }
+  .perf-table td:nth-child(5)::before { content: '총손익'; }
+}
+
 /* 전략 카드 그리드 (데스크탑) */
 .strategy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
