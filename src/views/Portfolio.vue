@@ -79,7 +79,7 @@
           <span v-if="s.usd_rate" class="exchange-rate">USD/KRW {{ s.usd_rate.toLocaleString() }}원</span>
         </h2>
         <div v-if="!usPositions.length" class="empty">보유 종목 없음</div>
-        <table v-else>
+        <table v-else class="us-table">
           <thead>
             <tr>
               <th>코드</th><th>종목명</th><th>수량</th>
@@ -217,7 +217,7 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; alig
 .metric .value { font-size: 22px; font-weight: 700; }
 .metric .sub { font-size: 13px; margin-top: 4px; }
 
-.section { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow-x: auto; }
+.section { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow-x: auto; margin-bottom: 20px; }
 .chart-section { overflow: visible; }
 .chart-wrap { height: 220px; }
 
@@ -238,7 +238,7 @@ tr:last-child td { border-bottom: none; }
   h2 { font-size: 15px; }
   .metric { padding: 14px; }
   .metric .value { font-size: 18px; }
-  .section { padding: 12px; overflow-x: visible; }
+  .section { padding: 16px; overflow-x: visible; margin-bottom: 16px; }
   h1 { font-size: 18px; margin-bottom: 16px; }
 
   table, thead, tbody, tr { display: block; }
@@ -266,16 +266,29 @@ tr:last-child td { border-bottom: none; }
     flex-shrink: 0;
     margin-right: 8px;
   }
-  td:nth-child(1)::before { content: '코드'; }
-  td:nth-child(2)::before { content: '종목명'; }
-  td:nth-child(3)::before { content: '수량'; }
-  td:nth-child(4)::before { content: '평균단가'; }
-  td:nth-child(5)::before { content: '현재가'; }
-  td:nth-child(6)::before { content: '평가금액'; }
-  td:nth-child(7)::before { content: '손익'; }
-  td:nth-child(8)::before { content: '수익률'; }
-  td:nth-child(9)::before { content: '최고수익'; }
-  td:nth-child(10)::before { content: '매수일'; }
-  td:nth-child(11)::before { content: '전략'; }
+  /* 국내 주식 테이블 */
+  table:not(.us-table) td:nth-child(1)::before { content: '코드'; }
+  table:not(.us-table) td:nth-child(2)::before { content: '종목명'; }
+  table:not(.us-table) td:nth-child(3)::before { content: '수량'; }
+  table:not(.us-table) td:nth-child(4)::before { content: '평균단가'; }
+  table:not(.us-table) td:nth-child(5)::before { content: '현재가'; }
+  table:not(.us-table) td:nth-child(6)::before { content: '평가금액'; }
+  table:not(.us-table) td:nth-child(7)::before { content: '손익'; }
+  table:not(.us-table) td:nth-child(8)::before { content: '수익률'; }
+  table:not(.us-table) td:nth-child(9)::before { content: '최고수익'; }
+  table:not(.us-table) td:nth-child(10)::before { content: '매수일'; }
+  table:not(.us-table) td:nth-child(11)::before { content: '전략'; }
+  /* 해외 주식 테이블 */
+  .us-table td:nth-child(1)::before { content: '코드'; }
+  .us-table td:nth-child(2)::before { content: '종목명'; }
+  .us-table td:nth-child(3)::before { content: '수량'; }
+  .us-table td:nth-child(4)::before { content: '평균단가(USD)'; }
+  .us-table td:nth-child(5)::before { content: '현재가(USD)'; }
+  .us-table td:nth-child(6)::before { content: '평가금액'; }
+  .us-table td:nth-child(7)::before { content: '손익'; }
+  .us-table td:nth-child(8)::before { content: '수익률'; }
+  .us-table td:nth-child(9)::before { content: '최고수익'; }
+  .us-table td:nth-child(10)::before { content: '매수일'; }
+  .us-table td:nth-child(11)::before { content: '전략'; }
 }
 </style>
