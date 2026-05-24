@@ -91,10 +91,17 @@ export async function fetchSnapshotHistory() {
   data.forEach(d => {
     byDate[d.snapshotted_at.slice(0, 10)] = d
   })
-  return Object.values(byDate).map(d => ({
+  const result = Object.values(byDate).map(d => ({
     date: d.snapshotted_at.slice(0, 10),
     pnl_pct: Math.round(d.total_pnl_pct * 100) / 100,
   }))
+  // 차트가 0%에서 시작하도록 첫 데이터 하루 전 날짜에 0 포인트 추가
+  if (result.length > 0) {
+    const firstDate = new Date(result[0].date)
+    firstDate.setDate(firstDate.getDate() - 1)
+    result.unshift({ date: firstDate.toISOString().slice(0, 10), pnl_pct: 0 })
+  }
+  return result
 }
 
 export async function fetchStrategyStats() {
