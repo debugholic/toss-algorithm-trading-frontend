@@ -220,7 +220,7 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; alig
 .sub-row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
 
 .section { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow-x: auto; margin-bottom: 20px; }
-.chart-section { overflow: visible; }
+.chart-section { overflow: hidden; }
 .chart-wrap { height: 220px; }
 
 @media (max-width: 768px) { .chart-wrap { height: 160px; } }
