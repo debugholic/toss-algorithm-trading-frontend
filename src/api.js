@@ -84,9 +84,14 @@ export async function fetchSnapshotHistory() {
     .from('portfolio_snapshots')
     .select('snapshotted_at, total_pnl_pct')
     .order('snapshotted_at', { ascending: true })
-    .limit(90)
+    .limit(500)
   if (error) throw error
-  return data.map(d => ({
+  // 날짜별 마지막 스냅샷 하나만 사용 (하루 여러 번 저장되는 경우 대비)
+  const byDate = {}
+  data.forEach(d => {
+    byDate[d.snapshotted_at.slice(0, 10)] = d
+  })
+  return Object.values(byDate).map(d => ({
     date: d.snapshotted_at.slice(0, 10),
     pnl_pct: Math.round(d.total_pnl_pct * 100) / 100,
   }))

@@ -7,10 +7,15 @@
 
     <div v-if="cfg" class="strategy-layout">
 
-      <!-- 전략별 성과 테이블 -->
+      <!-- 전략별 성과: 접기/펼치기 -->
       <div class="perf-section">
-        <div class="section-title">전략별 성과</div>
-        <table class="perf-table">
+        <div class="perf-header" @click="perfOpen = !perfOpen">
+          <div class="section-title">전략별 성과</div>
+          <span class="toggle-btn">{{ perfOpen ? '▲ 접기' : '▼ 펼치기' }}</span>
+        </div>
+
+        <!-- 펼친 상태: 전체 테이블 -->
+        <table v-if="perfOpen" class="perf-table">
           <thead>
             <tr>
               <th>전략명</th>
@@ -30,29 +35,42 @@
             </tr>
           </tbody>
         </table>
-      </div>
 
-      <!-- 듀얼 모멘텀 게이트 (전체 너비) -->
-      <div class="card gate-card">
-        <div class="card-title">🚦 듀얼 모멘텀 <span class="badge gate">시장 게이트</span></div>
-
-        <div class="block">
-          <div class="block-title">왜 이 전략?</div>
-          <p>모든 전략의 최상위 관문입니다. KOSPI의 {{ cfg.lookback_52w }}거래일(약 1년) 수익률이 음수이면 시장 전체가 하락 중이라고 판단하고 스캔을 중단, 신규 매수를 전면 차단합니다. Gary Antonacci의 듀얼 모멘텀 이론 중 절대 모멘텀을 적용한 것입니다.</p>
-        </div>
-
-        <div class="block">
-          <div class="block-title">동작 흐름</div>
-          <div class="flow">
-            <div class="flow-item"><span class="tag buy">체크</span> KOSPI 현재가 vs {{ cfg.lookback_52w }}거래일 전 가격 비교</div>
-            <div class="flow-item"><span class="tag sell">차단</span> 1년 수익률 음수 → 스캔 중단, 대기 매수 전면 취소</div>
-            <div class="flow-item"><span class="tag trail">통과</span> 1년 수익률 양수 → 아래 전략 활성화</div>
+        <!-- 닫힌 상태: 요약 -->
+        <div v-else class="perf-summary">
+          <div v-for="row in strategyStats" :key="row.strategy" class="perf-chip">
+            <span class="chip-name">{{ STRATEGY_LABELS[row.strategy] }}</span>
+            <span v-if="row.trades" class="chip-stats">
+              <span :class="pnlClass(row.winRate - 50)">승률 {{ row.winRate }}%</span>
+              <span class="chip-sep">·</span>
+              <span :class="pnlClass(row.totalPnl)">{{ formatPnl(row.totalPnl) }}원</span>
+            </span>
+            <span v-else class="chip-no-data">-</span>
           </div>
         </div>
       </div>
 
-      <!-- 4개 전략: 데스크탑 2열 그리드 / 모바일 스와이프 -->
+      <!-- 전략 카드: 듀얼 모멘텀 포함 (데스크탑 2열 / 모바일 스와이프) -->
       <div class="strategy-grid">
+
+        <!-- 듀얼 모멘텀 게이트 (데스크탑: full-width, 모바일: 첫 번째 카드) -->
+        <div class="card gate-card">
+          <div class="card-title">🚦 듀얼 모멘텀 <span class="badge gate">시장 게이트</span></div>
+
+          <div class="block">
+            <div class="block-title">왜 이 전략?</div>
+            <p>모든 전략의 최상위 관문입니다. KOSPI의 {{ cfg.lookback_52w }}거래일(약 1년) 수익률이 음수이면 시장 전체가 하락 중이라고 판단하고 스캔을 중단, 신규 매수를 전면 차단합니다. Gary Antonacci의 듀얼 모멘텀 이론 중 절대 모멘텀을 적용한 것입니다.</p>
+          </div>
+
+          <div class="block">
+            <div class="block-title">동작 흐름</div>
+            <div class="flow">
+              <div class="flow-item"><span class="tag buy">체크</span> KOSPI 현재가 vs {{ cfg.lookback_52w }}거래일 전 가격 비교</div>
+              <div class="flow-item"><span class="tag sell">차단</span> 1년 수익률 음수 → 스캔 중단, 대기 매수 전면 취소</div>
+              <div class="flow-item"><span class="tag trail">통과</span> 1년 수익률 양수 → 아래 전략 활성화</div>
+            </div>
+          </div>
+        </div>
 
         <!-- MA 크로스 -->
         <div class="card">
@@ -182,6 +200,7 @@ const STRATEGY_LABELS = {
   rsi_reversal: 'RSI 역발산',
 }
 
+const perfOpen = ref(false)
 const cfg = ref(null)
 const maCnt = ref(0)
 const rsiCnt = ref(0)
@@ -222,11 +241,20 @@ onMounted(async () => {
 h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .caption { color: #888; font-size: 13px; margin-bottom: 24px; }
 
-.strategy-layout { display: flex; flex-direction: column; gap: 20px; overflow-x: clip; }
+.strategy-layout { display: flex; flex-direction: column; gap: 20px; overflow-x: hidden; }
 
 /* 성과 테이블 */
 .perf-section { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-.section-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; color: #1a1a2e; }
+.perf-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 14px; user-select: none; }
+.section-title { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+.toggle-btn { font-size: 12px; color: #aaa; }
+.perf-summary { display: flex; flex-direction: column; gap: 0; }
+.perf-chip { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+.perf-chip:last-child { border-bottom: none; }
+.chip-name { color: #555; font-weight: 600; }
+.chip-stats { display: flex; gap: 6px; align-items: center; }
+.chip-sep { color: #ddd; }
+.chip-no-data { color: #ccc; }
 .perf-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .perf-table th { text-align: left; color: #888; font-weight: 600; font-size: 12px; padding: 6px 8px; border-bottom: 1px solid #f0f0f0; }
 .perf-table td { padding: 10px 8px; border-bottom: 1px solid #f8f8f8; color: #333; }
@@ -273,6 +301,7 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 
 /* 전략 카드 그리드 (데스크탑) */
 .strategy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.strategy-grid > .gate-card { grid-column: 1 / -1; }
 
 @media (max-width: 768px) {
   h1 { font-size: 18px; margin-bottom: 4px; }
@@ -286,10 +315,16 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
     padding-bottom: 8px;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    min-width: 0;
+    max-width: 100%;
+    flex-shrink: 1;
   }
   .strategy-grid::-webkit-scrollbar { display: none; }
   .strategy-grid .card {
     flex: 0 0 85vw;
+    min-width: 0;
+    max-width: 85vw;
+    overflow: hidden;
     scroll-snap-align: start;
   }
 }

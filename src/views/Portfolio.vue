@@ -217,7 +217,8 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; alig
 .metric .label { font-size: 13px; color: #666; margin-bottom: 6px; }
 .metric .value { font-size: 22px; font-weight: 700; }
 .metric .sub { font-size: 12px; margin-top: 4px; color: #888; }
-.sub-row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.sub-row { display: flex; gap: 2px 6px; margin-top: 4px; flex-wrap: wrap; }
+.sub-row .sub { margin-top: 0; }
 
 .section { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow-x: auto; margin-bottom: 20px; }
 .chart-section { overflow: hidden; }
