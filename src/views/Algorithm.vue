@@ -7,6 +7,31 @@
 
     <div v-if="cfg" class="strategy-layout">
 
+      <!-- 전략별 성과 테이블 -->
+      <div class="perf-section">
+        <div class="section-title">전략별 성과</div>
+        <table class="perf-table">
+          <thead>
+            <tr>
+              <th>전략명</th>
+              <th>거래수</th>
+              <th>승률</th>
+              <th>평균수익률</th>
+              <th>총손익</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in strategyStats" :key="row.strategy">
+              <td>{{ STRATEGY_LABELS[row.strategy] }}</td>
+              <td>{{ row.trades ?? '-' }}</td>
+              <td>{{ row.winRate != null ? row.winRate + '%' : '-' }}</td>
+              <td :class="pnlClass(row.avgPnlPct)">{{ row.avgPnlPct != null ? (row.avgPnlPct > 0 ? '+' : '') + row.avgPnlPct + '%' : '-' }}</td>
+              <td :class="pnlClass(row.totalPnl)">{{ row.totalPnl != null ? formatPnl(row.totalPnl) : '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <!-- 듀얼 모멘텀 게이트 (전체 너비) -->
       <div class="card gate-card">
         <div class="card-title">🚦 듀얼 모멘텀 <span class="badge gate">시장 게이트</span></div>
@@ -26,7 +51,7 @@
         </div>
       </div>
 
-      <!-- 4개 전략 2열 그리드 -->
+      <!-- 4개 전략: 데스크탑 2열 그리드 / 모바일 스와이프 -->
       <div class="strategy-grid">
 
         <!-- MA 크로스 -->
@@ -148,7 +173,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { fetchConfig, fetchScans } from '../api.js'
+import { fetchConfig, fetchScans, fetchStrategyStats } from '../api.js'
+
+const STRATEGY_LABELS = {
+  ma_cross:     'MA 크로스',
+  breakout_52w: '52주 신고가',
+  bb_reversal:  'BB 반등',
+  rsi_reversal: 'RSI 역발산',
+}
 
 const cfg = ref(null)
 const maCnt = ref(0)
@@ -156,10 +188,22 @@ const rsiCnt = ref(0)
 const bbCnt = ref(0)
 const breakoutCnt = ref(0)
 const lastScanDate = ref('-')
+const strategyStats = ref([])
+
+function pnlClass(val) {
+  if (val == null) return ''
+  return val > 0 ? 'profit' : val < 0 ? 'loss' : ''
+}
+
+function formatPnl(val) {
+  const sign = val >= 0 ? '+' : ''
+  return sign + val.toLocaleString()
+}
 
 onMounted(async () => {
-  const [config, scans] = await Promise.all([fetchConfig(), fetchScans()])
+  const [config, scans, stats] = await Promise.all([fetchConfig(), fetchScans(), fetchStrategyStats()])
   cfg.value = config
+  strategyStats.value = stats
   if (scans.length) {
     const last = scans[scans.length - 1]
     lastScanDate.value = last.scanned_at
@@ -179,12 +223,38 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .caption { color: #888; font-size: 13px; margin-bottom: 24px; }
 
 .strategy-layout { display: flex; flex-direction: column; gap: 20px; }
+
+/* 성과 테이블 */
+.perf-section { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.section-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; color: #1a1a2e; }
+.perf-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.perf-table th { text-align: left; color: #888; font-weight: 600; font-size: 12px; padding: 6px 8px; border-bottom: 1px solid #f0f0f0; }
+.perf-table td { padding: 10px 8px; border-bottom: 1px solid #f8f8f8; color: #333; }
+.perf-table tr:last-child td { border-bottom: none; }
+.profit { color: #dc2626; font-weight: 600; }
+.loss   { color: #1d4ed8; font-weight: 600; }
+
+/* 전략 카드 그리드 (데스크탑) */
 .strategy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
 @media (max-width: 768px) {
   h1 { font-size: 18px; margin-bottom: 4px; }
-  .strategy-grid { grid-template-columns: 1fr; }
   .card { padding: 16px; }
+  /* 모바일: scroll-snap 스와이프 */
+  .strategy-grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 12px;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .strategy-grid::-webkit-scrollbar { display: none; }
+  .strategy-grid .card {
+    flex: 0 0 85vw;
+    scroll-snap-align: start;
+  }
 }
 
 .card {

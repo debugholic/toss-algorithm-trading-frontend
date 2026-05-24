@@ -68,6 +68,39 @@ export async function fetchPending() {
   return data?.data ?? {}
 }
 
+export async function fetchStrategyStats() {
+  const { data, error } = await supabase
+    .from('trades')
+    .select('strategy, action, pnl, pnl_pct')
+  if (error) throw error
+
+  const STRATEGIES = ['ma_cross', 'breakout_52w', 'bb_reversal', 'rsi_reversal']
+  const map = {}
+  STRATEGIES.forEach(s => { map[s] = { trades: 0, wins: 0, pnlSum: 0, pnlPctSum: 0 } })
+
+  data.forEach(t => {
+    if (t.action !== 'sell') return
+    const s = t.strategy
+    if (!map[s]) return
+    map[s].trades++
+    if ((t.pnl ?? 0) > 0) map[s].wins++
+    map[s].pnlSum += t.pnl ?? 0
+    map[s].pnlPctSum += t.pnl_pct ?? 0
+  })
+
+  return STRATEGIES.map(s => {
+    const m = map[s]
+    const hasTrades = m.trades > 0
+    return {
+      strategy: s,
+      trades:   hasTrades ? m.trades : null,
+      winRate:  hasTrades ? Math.round((m.wins / m.trades) * 100) : null,
+      avgPnlPct: hasTrades ? +(m.pnlPctSum / m.trades).toFixed(2) : null,
+      totalPnl:  hasTrades ? Math.round(m.pnlSum) : null,
+    }
+  })
+}
+
 export async function fetchConfig() {
   const { data, error } = await supabase
     .from('config')
