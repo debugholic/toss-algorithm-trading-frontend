@@ -51,7 +51,7 @@
             </thead>
             <tbody>
               <tr v-for="(t, i) in byDate[selectedDate].trades" :key="i">
-                <td>{{ t.date }}</td>
+                <td>{{ t.date.slice(5) }}</td>
                 <td>{{ t.market === 'US' ? '🇺🇸' : '🇰🇷' }}</td>
                 <td :class="t.type === 'BUY' ? 'buy' : 'sell'">{{ t.type }}</td>
                 <td>{{ t.name }}</td>

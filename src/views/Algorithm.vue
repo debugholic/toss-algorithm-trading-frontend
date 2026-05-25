@@ -313,6 +313,7 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
     scroll-snap-type: x mandatory;
     gap: 12px;
     padding-bottom: 8px;
+    padding-right: 15vw;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     min-width: 0;
