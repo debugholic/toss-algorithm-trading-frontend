@@ -229,33 +229,24 @@ function setupInfiniteCarousel() {
   grid.scrollLeft = step - SPL
   requestAnimationFrame(() => { grid.style.scrollSnapType = '' })
 
-  // 클론 위치 감지 → 실제 카드로 순간이동
+  // scroll 이벤트로 클론 도달 즉시 감지 → 실제 카드로 순간이동
   let settling = false
-  const handleWrap = () => {
-    if (settling || window.innerWidth > 768) return
-    const sl    = grid.scrollLeft
-    const maxSl = grid.scrollWidth - grid.clientWidth
+  grid.addEventListener('scroll', () => {
+    if (settling) return
+    const sl    = Math.round(grid.scrollLeft)
+    const maxSl = Math.round(grid.scrollWidth - grid.clientWidth)
 
-    if (sl <= 12) {
-      // lastClone → 실제 마지막 카드로 순간이동
+    if (sl <= 1) {
       settling = true
       grid.style.scrollSnapType = 'none'
       grid.scrollLeft = N * step - SPL
       requestAnimationFrame(() => { grid.style.scrollSnapType = ''; settling = false })
-    } else if (sl >= maxSl - 12) {
-      // firstClone → 실제 첫 번째 카드로 순간이동
+    } else if (sl >= maxSl - 1) {
       settling = true
       grid.style.scrollSnapType = 'none'
       grid.scrollLeft = step - SPL
       requestAnimationFrame(() => { grid.style.scrollSnapType = ''; settling = false })
     }
-  }
-
-  grid.addEventListener('scrollend', handleWrap)
-  let debounce
-  grid.addEventListener('scroll', () => {
-    clearTimeout(debounce)
-    debounce = setTimeout(handleWrap, 150)
   }, { passive: true })
 }
 const maCnt = ref(0)
