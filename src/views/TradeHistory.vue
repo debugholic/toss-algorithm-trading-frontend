@@ -51,7 +51,7 @@
             </thead>
             <tbody>
               <tr v-for="(t, i) in byDate[selectedDate].trades" :key="i">
-                <td>{{ t.date.slice(5) }}</td>
+                <td class="td-date">{{ t.date }}</td>
                 <td>{{ t.market === 'US' ? '🇺🇸' : '🇰🇷' }}</td>
                 <td :class="t.type === 'BUY' ? 'buy' : 'sell'">{{ t.type }}</td>
                 <td>{{ t.name }}</td>
@@ -224,6 +224,7 @@ h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 th { text-align: left; padding: 8px 10px; border-bottom: 2px solid #eee; color: #555; font-weight: 600; white-space: nowrap; overflow: hidden; }
 td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.td-date { font-size: 12px; letter-spacing: -0.3px; }
 th:nth-child(1) { width: 16%; } /* 일시 */
 th:nth-child(2) { width: 6%; }  /* 마켓 */
 th:nth-child(3) { width: 6%; }  /* 구분 */
@@ -265,6 +266,7 @@ tr:last-child td { border-bottom: none; }
     white-space: normal;
     font-size: 13px;
   }
+  .table-wrap .td-date { white-space: nowrap; font-size: 12px; }
   .table-wrap tr td:last-child { border-bottom: none !important; }
   .table-wrap td::before {
     color: #888;

@@ -51,7 +51,7 @@
       </div>
 
       <!-- 전략 카드: 듀얼 모멘텀 포함 (데스크탑 2열 / 모바일 스와이프) -->
-      <div class="strategy-grid">
+      <div class="strategy-grid" ref="gridRef">
 
         <!-- 듀얼 모멘텀 게이트 (데스크탑: full-width, 모바일: 첫 번째 카드) -->
         <div class="card gate-card">
@@ -190,7 +190,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { fetchConfig, fetchScans, fetchStrategyStats } from '../api.js'
 
 const STRATEGY_LABELS = {
@@ -202,6 +202,62 @@ const STRATEGY_LABELS = {
 
 const perfOpen = ref(false)
 const cfg = ref(null)
+const gridRef = ref(null)
+
+function setupInfiniteCarousel() {
+  const grid = gridRef.value
+  if (!grid || window.innerWidth > 768) return
+
+  const realCards = [...grid.children]
+  const N = realCards.length
+  if (N < 2) return
+
+  // 마지막 카드 클론 → 맨 앞, 첫 번째 카드 클론 → 맨 뒤
+  const lastClone  = realCards[N - 1].cloneNode(true)
+  const firstClone = realCards[0].cloneNode(true)
+  grid.insertBefore(lastClone, realCards[0])
+  grid.appendChild(firstClone)
+
+  // 카드 너비 + gap 기준으로 snap 단위 계산
+  const cardW = grid.children[1].offsetWidth  // 실제 렌더된 카드 너비 (85%)
+  const gap   = 12
+  const SPL   = 22  // scroll-padding-left (CSS와 동일하게 맞춤)
+  const step  = cardW + gap  // 카드 1칸 단위
+
+  // 초기 위치: card1 스냅 위치 = step - SPL (왼쪽에 lastClone peek 보임)
+  grid.style.scrollSnapType = 'none'
+  grid.scrollLeft = step - SPL
+  requestAnimationFrame(() => { grid.style.scrollSnapType = '' })
+
+  // 클론 위치 감지 → 실제 카드로 순간이동
+  let settling = false
+  const handleWrap = () => {
+    if (settling || window.innerWidth > 768) return
+    const sl    = grid.scrollLeft
+    const maxSl = grid.scrollWidth - grid.clientWidth
+
+    if (sl <= 12) {
+      // lastClone → 실제 마지막 카드로 순간이동
+      settling = true
+      grid.style.scrollSnapType = 'none'
+      grid.scrollLeft = N * step - SPL
+      requestAnimationFrame(() => { grid.style.scrollSnapType = ''; settling = false })
+    } else if (sl >= maxSl - 12) {
+      // firstClone → 실제 첫 번째 카드로 순간이동
+      settling = true
+      grid.style.scrollSnapType = 'none'
+      grid.scrollLeft = step - SPL
+      requestAnimationFrame(() => { grid.style.scrollSnapType = ''; settling = false })
+    }
+  }
+
+  grid.addEventListener('scrollend', handleWrap)
+  let debounce
+  grid.addEventListener('scroll', () => {
+    clearTimeout(debounce)
+    debounce = setTimeout(handleWrap, 150)
+  }, { passive: true })
+}
 const maCnt = ref(0)
 const rsiCnt = ref(0)
 const bbCnt = ref(0)
@@ -225,7 +281,7 @@ onMounted(async () => {
   strategyStats.value = stats
   if (scans.length) {
     const last = scans[scans.length - 1]
-    lastScanDate.value = last.scanned_at
+    lastScanDate.value = last.scanned_at.slice(0, 10) + ' ' + last.scanned_at.slice(11, 16)
     last.results.forEach(r => {
       const s = Array.isArray(r.strategy) ? r.strategy : [r.strategy || 'ma_cross']
       if (s.includes('ma_cross'))      maCnt.value++
@@ -234,6 +290,8 @@ onMounted(async () => {
       if (s.includes('breakout_52w')) breakoutCnt.value++
     })
   }
+  await nextTick()
+  setupInfiniteCarousel()
 })
 </script>
 
@@ -311,20 +369,18 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
     display: flex;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
+    scroll-padding-left: 22px;
     gap: 12px;
-    padding-bottom: 8px;
-    padding-right: 15vw;
+    padding: 0 22px 8px 0;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     min-width: 0;
-    max-width: 100%;
-    flex-shrink: 1;
   }
   .strategy-grid::-webkit-scrollbar { display: none; }
   .strategy-grid .card {
-    flex: 0 0 85vw;
+    flex: 0 0 93%;
     min-width: 0;
-    max-width: 85vw;
+    max-width: 93%;
     overflow: hidden;
     scroll-snap-align: start;
   }
