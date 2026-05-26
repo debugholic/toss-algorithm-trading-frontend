@@ -257,11 +257,10 @@ tr:last-child td { border-bottom: none; }
 
 .summary-row { cursor: pointer; }
 .summary-row:hover { background: #fafafa; }
-.summary-row.expanded td { background: #f0f5ff; }
-.summary-row.expanded td:first-child { border-left: 3px solid #2563eb; }
+.summary-row.expanded td { border-color: #2563eb; }
 .name-col { font-weight: 500; }
 
-.detail-row td { background: #f0f5ff; padding: 12px 16px; border-left: 3px solid #2563eb; }
+.detail-row td { background: #f8f9ff; padding: 12px 16px; border-bottom-color: #2563eb; }
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
