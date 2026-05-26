@@ -1,7 +1,7 @@
 <template>
   <div class="layout">
     <nav class="sidebar">
-      <div class="logo">💸 돈복사</div>
+      <div class="logo"><span style="margin-right:8px">💸</span>돈복사</div>
       <RouterLink to="/"><span class="nav-icon">📊</span><span class="nav-label">포트폴리오</span></RouterLink>
       <RouterLink to="/scans"><span class="nav-icon">🔍</span><span class="nav-label">스캔 이력</span></RouterLink>
       <RouterLink to="/trades"><span class="nav-icon">📋</span><span class="nav-label">매매 이력</span></RouterLink>
@@ -65,7 +65,7 @@ body {
 .sidebar a:hover { background: #2a2a4a; color: #fff; }
 .sidebar a.router-link-active { background: #2563eb; color: #fff; }
 
-.nav-icon { display: inline; margin-right: 4px; }
+.nav-icon { display: inline; margin-right: 8px; }
 .nav-label { display: inline; }
 
 .content {

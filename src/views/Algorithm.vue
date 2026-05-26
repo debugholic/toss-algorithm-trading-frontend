@@ -257,11 +257,11 @@ onMounted(async () => {
     const last = scans[scans.length - 1]
     lastScanDate.value = last.scanned_at.slice(0, 10) + ' ' + last.scanned_at.slice(11, 16)
     last.results.forEach(r => {
-      const s = Array.isArray(r.strategy) ? r.strategy : [r.strategy || 'ma_cross']
-      if (s.includes('ma_cross'))      maCnt.value++
-      if (s.includes('rsi_reversal'))  rsiCnt.value++
-      if (s.includes('bb_reversal'))   bbCnt.value++
-      if (s.includes('breakout_52w'))  breakoutCnt.value++
+      const sig = r.signal ?? ''
+      if (sig.includes('골든크로스'))       maCnt.value++
+      else if (sig.includes('RSI과매도'))   rsiCnt.value++
+      else if (sig.includes('BB반등'))      bbCnt.value++
+      else if (sig.includes('신고가'))      breakoutCnt.value++
     })
   }
   await nextTick()
