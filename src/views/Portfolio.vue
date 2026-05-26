@@ -48,26 +48,32 @@
         <table v-else>
           <thead>
             <tr>
-              <th>코드</th><th>종목명</th><th>수량</th>
-              <th>평균단가</th><th>현재가</th><th>평가금액</th>
-              <th>손익</th><th>수익률</th><th>최고수익</th>
-              <th>매수일</th><th>전략</th>
+              <th>종목명</th><th>손익</th><th>평가금액</th><th>수익률</th><th></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="p in krPositions" :key="p.code">
-              <td>{{ p.code }}</td>
-              <td>{{ p.name }}</td>
-              <td>{{ p.shares }}</td>
-              <td>{{ fmt(p.avg_price) }}</td>
-              <td>{{ fmt(p.current_price) }}</td>
-              <td>{{ fmt(p.eval_amount) }}</td>
-              <td :class="p.pnl >= 0 ? 'pos' : 'neg'">{{ p.pnl >= 0 ? '+' : '' }}{{ fmt(p.pnl) }}</td>
-              <td :class="p.pnl_pct >= 0 ? 'pos' : 'neg'">{{ p.pnl_pct >= 0 ? '+' : '' }}{{ p.pnl_pct.toFixed(2) }}%</td>
-              <td class="peak">{{ p.peak_pnl_pct > 0 ? p.peak_pnl_pct.toFixed(1) + '%' : '-' }}</td>
-              <td>{{ p.buy_date }}</td>
-              <td>{{ fmtStrategy(p.strategy) }}</td>
-            </tr>
+            <template v-for="p in krPositions" :key="p.code">
+              <tr class="summary-row" @click="toggle(p.code)">
+                <td class="name-col">{{ p.name }}</td>
+                <td :class="p.pnl >= 0 ? 'pos' : 'neg'">{{ p.pnl >= 0 ? '+' : '' }}{{ fmt(p.pnl) }}</td>
+                <td>{{ fmt(p.eval_amount) }}</td>
+                <td :class="p.pnl_pct >= 0 ? 'pos' : 'neg'">{{ p.pnl_pct >= 0 ? '+' : '' }}{{ p.pnl_pct.toFixed(2) }}%</td>
+                <td class="expand-icon">{{ isExpanded(p.code) ? '▲' : '▼' }}</td>
+              </tr>
+              <tr v-if="isExpanded(p.code)" class="detail-row">
+                <td colspan="5">
+                  <div class="detail-grid">
+                    <div class="detail-item"><span class="dl">코드</span>{{ p.code }}</div>
+                    <div class="detail-item"><span class="dl">수량</span>{{ p.shares }}</div>
+                    <div class="detail-item"><span class="dl">평균단가</span>{{ fmt(p.avg_price) }}</div>
+                    <div class="detail-item"><span class="dl">현재가</span>{{ fmt(p.current_price) }}</div>
+                    <div class="detail-item"><span class="dl">최고수익</span><span class="peak">{{ p.peak_pnl_pct > 0 ? p.peak_pnl_pct.toFixed(1) + '%' : '-' }}</span></div>
+                    <div class="detail-item"><span class="dl">매수일</span>{{ p.buy_date }}</div>
+                    <div class="detail-item"><span class="dl">전략</span>{{ fmtStrategy(p.strategy) }}</div>
+                  </div>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -82,26 +88,32 @@
         <table v-else class="us-table">
           <thead>
             <tr>
-              <th>코드</th><th>종목명</th><th>수량</th>
-              <th>평균단가(USD)</th><th>현재가(USD)</th><th>평가금액</th>
-              <th>손익</th><th>수익률</th><th>최고수익</th>
-              <th>매수일</th><th>전략</th>
+              <th>종목명</th><th>손익</th><th>평가금액</th><th>수익률</th><th></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="p in usPositions" :key="p.code">
-              <td>{{ p.code }}</td>
-              <td>{{ p.name }}</td>
-              <td>{{ p.shares }}</td>
-              <td>${{ fmtUsd(p.avg_price) }}</td>
-              <td>${{ fmtUsd(p.current_price) }}</td>
-              <td>{{ fmt(p.eval_amount) }}원</td>
-              <td :class="p.pnl >= 0 ? 'pos' : 'neg'">{{ p.pnl >= 0 ? '+' : '' }}{{ fmt(p.pnl) }}</td>
-              <td :class="p.pnl_pct >= 0 ? 'pos' : 'neg'">{{ p.pnl_pct >= 0 ? '+' : '' }}{{ p.pnl_pct.toFixed(2) }}%</td>
-              <td class="peak">{{ p.peak_pnl_pct > 0 ? p.peak_pnl_pct.toFixed(1) + '%' : '-' }}</td>
-              <td>{{ p.buy_date }}</td>
-              <td>{{ fmtStrategy(p.strategy) }}</td>
-            </tr>
+            <template v-for="p in usPositions" :key="p.code">
+              <tr class="summary-row" @click="toggle(p.code)">
+                <td class="name-col">{{ p.name }}</td>
+                <td :class="p.pnl >= 0 ? 'pos' : 'neg'">{{ p.pnl >= 0 ? '+' : '' }}{{ fmt(p.pnl) }}</td>
+                <td>{{ fmt(p.eval_amount) }}원</td>
+                <td :class="p.pnl_pct >= 0 ? 'pos' : 'neg'">{{ p.pnl_pct >= 0 ? '+' : '' }}{{ p.pnl_pct.toFixed(2) }}%</td>
+                <td class="expand-icon">{{ isExpanded(p.code) ? '▲' : '▼' }}</td>
+              </tr>
+              <tr v-if="isExpanded(p.code)" class="detail-row">
+                <td colspan="5">
+                  <div class="detail-grid">
+                    <div class="detail-item"><span class="dl">코드</span>{{ p.code }}</div>
+                    <div class="detail-item"><span class="dl">수량</span>{{ p.shares }}</div>
+                    <div class="detail-item"><span class="dl">평균단가</span>${{ fmtUsd(p.avg_price) }}</div>
+                    <div class="detail-item"><span class="dl">현재가</span>${{ fmtUsd(p.current_price) }}</div>
+                    <div class="detail-item"><span class="dl">최고수익</span><span class="peak">{{ p.peak_pnl_pct > 0 ? p.peak_pnl_pct.toFixed(1) + '%' : '-' }}</span></div>
+                    <div class="detail-item"><span class="dl">매수일</span>{{ p.buy_date }}</div>
+                    <div class="detail-item"><span class="dl">전략</span>{{ fmtStrategy(p.strategy) }}</div>
+                  </div>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -124,7 +136,18 @@ const loading = ref(true)
 const s = ref({ total_asset: 0, total_pnl: 0, total_pnl_pct: 0, total_eval: 0, kr_eval: 0, us_eval: 0, cash: 0, usd_rate: null })
 const positions = ref([])
 const chartData = ref(null)
+const expandedRows = ref(new Set())
 let timer
+
+function toggle(code) {
+  const next = new Set(expandedRows.value)
+  if (next.has(code)) next.delete(code)
+  else next.add(code)
+  expandedRows.value = next
+}
+function isExpanded(code) {
+  return expandedRows.value.has(code)
+}
 
 const chartOptions = {
   responsive: true,
@@ -236,6 +259,20 @@ tr:last-child td { border-bottom: none; }
 .peak { color: #7c3aed; }
 .empty { color: #aaa; padding: 16px 0; }
 
+.summary-row { cursor: pointer; }
+.summary-row:hover { background: #fafafa; }
+.name-col { font-weight: 500; }
+.expand-icon { text-align: right; color: #aaa; font-size: 11px; }
+
+.detail-row td { background: #f8f9ff; padding: 12px 16px; }
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px 16px;
+}
+.detail-item { font-size: 12px; display: flex; flex-direction: column; gap: 2px; }
+.dl { color: #999; font-size: 11px; }
+
 @media (max-width: 768px) {
   .metrics { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
   .metric .value { font-size: 18px; }
@@ -262,36 +299,14 @@ tr:last-child td { border-bottom: none; }
     font-size: 13px;
   }
   tr td:last-child { border-bottom: none !important; }
-  td::before {
-    color: #888;
-    font-size: 12px;
-    font-weight: 600;
-    flex-shrink: 0;
-    margin-right: 8px;
-  }
-  /* 국내 주식 테이블 */
-  table:not(.us-table) td:nth-child(1)::before { content: '코드'; }
-  table:not(.us-table) td:nth-child(2)::before { content: '종목명'; }
-  table:not(.us-table) td:nth-child(3)::before { content: '수량'; }
-  table:not(.us-table) td:nth-child(4)::before { content: '평균단가'; }
-  table:not(.us-table) td:nth-child(5)::before { content: '현재가'; }
-  table:not(.us-table) td:nth-child(6)::before { content: '평가금액'; }
-  table:not(.us-table) td:nth-child(7)::before { content: '손익'; }
-  table:not(.us-table) td:nth-child(8)::before { content: '수익률'; }
-  table:not(.us-table) td:nth-child(9)::before { content: '최고수익'; }
-  table:not(.us-table) td:nth-child(10)::before { content: '매수일'; }
-  table:not(.us-table) td:nth-child(11)::before { content: '전략'; }
-  /* 해외 주식 테이블 */
-  .us-table td:nth-child(1)::before { content: '코드'; }
-  .us-table td:nth-child(2)::before { content: '종목명'; }
-  .us-table td:nth-child(3)::before { content: '수량'; }
-  .us-table td:nth-child(4)::before { content: '평균단가(USD)'; }
-  .us-table td:nth-child(5)::before { content: '현재가(USD)'; }
-  .us-table td:nth-child(6)::before { content: '평가금액'; }
-  .us-table td:nth-child(7)::before { content: '손익'; }
-  .us-table td:nth-child(8)::before { content: '수익률'; }
-  .us-table td:nth-child(9)::before { content: '최고수익'; }
-  .us-table td:nth-child(10)::before { content: '매수일'; }
-  .us-table td:nth-child(11)::before { content: '전략'; }
+  /* 요약 행 — 라벨 없음 (헤더 숨김 대신 순서로 파악) */
+  .summary-row td:nth-child(1)::before { content: '종목명'; color: #888; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-right: 8px; }
+  .summary-row td:nth-child(2)::before { content: '손익'; color: #888; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-right: 8px; }
+  .summary-row td:nth-child(3)::before { content: '평가금액'; color: #888; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-right: 8px; }
+  .summary-row td:nth-child(4)::before { content: '수익률'; color: #888; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-right: 8px; }
+
+  /* 상세 행 — 그리드 레이아웃으로 전환 */
+  .detail-row td { display: block !important; }
+  .detail-grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
