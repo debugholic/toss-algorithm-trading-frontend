@@ -48,20 +48,21 @@
         <table v-else>
           <thead>
             <tr>
-              <th>종목명</th><th>손익</th><th>평가금액</th><th>수익률</th><th></th>
+              <th>종목명</th><th>손익</th><th>평가금액</th><th>수익률</th>
             </tr>
           </thead>
           <tbody>
             <template v-for="p in krPositions" :key="p.code">
               <tr class="summary-row" @click="toggle(p.code)">
-                <td class="name-col">{{ p.name }}</td>
+                <td class="name-col">
+                  <span class="chevron" :class="{ open: isExpanded(p.code) }">›</span>{{ p.name }}
+                </td>
                 <td :class="p.pnl >= 0 ? 'pos' : 'neg'">{{ p.pnl >= 0 ? '+' : '' }}{{ fmt(p.pnl) }}</td>
                 <td>{{ fmt(p.eval_amount) }}</td>
                 <td :class="p.pnl_pct >= 0 ? 'pos' : 'neg'">{{ p.pnl_pct >= 0 ? '+' : '' }}{{ p.pnl_pct.toFixed(2) }}%</td>
-                <td class="expand-icon">{{ isExpanded(p.code) ? '▲' : '▼' }}</td>
               </tr>
               <tr v-if="isExpanded(p.code)" class="detail-row">
-                <td colspan="5">
+                <td colspan="4">
                   <div class="detail-grid">
                     <div class="detail-item"><span class="dl">코드</span>{{ p.code }}</div>
                     <div class="detail-item"><span class="dl">수량</span>{{ p.shares }}</div>
@@ -88,20 +89,21 @@
         <table v-else class="us-table">
           <thead>
             <tr>
-              <th>종목명</th><th>손익</th><th>평가금액</th><th>수익률</th><th></th>
+              <th>종목명</th><th>손익</th><th>평가금액</th><th>수익률</th>
             </tr>
           </thead>
           <tbody>
             <template v-for="p in usPositions" :key="p.code">
               <tr class="summary-row" @click="toggle(p.code)">
-                <td class="name-col">{{ p.name }}</td>
+                <td class="name-col">
+                  <span class="chevron" :class="{ open: isExpanded(p.code) }">›</span>{{ p.name }}
+                </td>
                 <td :class="p.pnl >= 0 ? 'pos' : 'neg'">{{ p.pnl >= 0 ? '+' : '' }}{{ fmt(p.pnl) }}</td>
                 <td>{{ fmt(p.eval_amount) }}원</td>
                 <td :class="p.pnl_pct >= 0 ? 'pos' : 'neg'">{{ p.pnl_pct >= 0 ? '+' : '' }}{{ p.pnl_pct.toFixed(2) }}%</td>
-                <td class="expand-icon">{{ isExpanded(p.code) ? '▲' : '▼' }}</td>
               </tr>
               <tr v-if="isExpanded(p.code)" class="detail-row">
-                <td colspan="5">
+                <td colspan="4">
                   <div class="detail-grid">
                     <div class="detail-item"><span class="dl">코드</span>{{ p.code }}</div>
                     <div class="detail-item"><span class="dl">수량</span>{{ p.shares }}</div>
@@ -262,7 +264,16 @@ tr:last-child td { border-bottom: none; }
 .summary-row { cursor: pointer; }
 .summary-row:hover { background: #fafafa; }
 .name-col { font-weight: 500; }
-.expand-icon { text-align: right; color: #aaa; font-size: 11px; }
+.chevron {
+  display: inline-block;
+  color: #ccc;
+  font-size: 16px;
+  line-height: 1;
+  margin-right: 4px;
+  transition: transform 0.2s ease;
+  transform: rotate(0deg);
+}
+.chevron.open { transform: rotate(90deg); color: #2563eb; }
 
 .detail-row td { background: #f8f9ff; padding: 12px 16px; }
 .detail-grid {
