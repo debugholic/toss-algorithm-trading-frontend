@@ -115,13 +115,22 @@ export async function fetchStrategyStats() {
   STRATEGIES.forEach(s => { map[s] = { trades: 0, wins: 0, pnlSum: 0, pnlPctSum: 0 } })
 
   data.forEach(t => {
-    if (t.action !== 'sell') return
-    const s = t.strategy
-    if (!map[s]) return
-    map[s].trades++
-    if ((t.pnl ?? 0) > 0) map[s].wins++
-    map[s].pnlSum += t.pnl ?? 0
-    map[s].pnlPctSum += t.pnl_pct ?? 0
+    if (t.action?.toLowerCase() !== 'sell') return
+    // strategy가 "[\"ma_cross\"]" 형태의 JSON 배열 문자열로 저장된 경우 파싱
+    let strategies = []
+    if (Array.isArray(t.strategy)) {
+      strategies = t.strategy
+    } else if (typeof t.strategy === 'string') {
+      try { strategies = JSON.parse(t.strategy) } catch { strategies = [t.strategy] }
+    }
+    strategies.forEach(s => {
+      const key = s?.toLowerCase()
+      if (!map[key]) return
+      map[key].trades++
+      if ((t.pnl ?? 0) > 0) map[key].wins++
+      map[key].pnlSum += t.pnl ?? 0
+      map[key].pnlPctSum += t.pnl_pct ?? 0
+    })
   })
 
   return STRATEGIES.map(s => {

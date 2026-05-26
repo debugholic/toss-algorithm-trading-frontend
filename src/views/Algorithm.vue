@@ -203,33 +203,32 @@ function setupInfiniteCarousel() {
   grid.insertBefore(lastClone, realCards[0])
   grid.appendChild(firstClone)
 
-  const cardW = grid.children[1].offsetWidth
-  const gap   = 12
-  const SPL   = 22
-  const step  = cardW + gap
+  // 레이아웃 완전히 끝난 뒤 offsetWidth 읽기 (rAF 2회)
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const gap  = 8
+    const SPL  = 18
+    const cardW = grid.children[1].offsetWidth
+    const step  = cardW + gap
 
-  grid.style.scrollSnapType = 'none'
-  grid.scrollLeft = step - SPL
-  requestAnimationFrame(() => { grid.style.scrollSnapType = '' })
+    // 초기 위치: card1이 스냅 위치에, lastClone이 10px 왼쪽에 보임
+    grid.style.scrollSnapType = 'none'
+    grid.scrollLeft = step - SPL
+    requestAnimationFrame(() => { grid.style.scrollSnapType = '' })
 
-  let settling = false
-  grid.addEventListener('scroll', () => {
-    if (settling) return
-    const sl    = Math.round(grid.scrollLeft)
-    const maxSl = Math.round(grid.scrollWidth - grid.clientWidth)
+    // 실제 클론 스냅 위치 기준으로 루프 감지
+    const lastCloneSnap  = 0
+    const firstCloneSnap = (N + 1) * step - SPL
 
-    if (sl <= 1) {
-      settling = true
-      grid.style.scrollSnapType = 'none'
-      grid.scrollLeft = N * step - SPL
-      requestAnimationFrame(() => { grid.style.scrollSnapType = ''; settling = false })
-    } else if (sl >= maxSl - 1) {
-      settling = true
-      grid.style.scrollSnapType = 'none'
-      grid.scrollLeft = step - SPL
-      requestAnimationFrame(() => { grid.style.scrollSnapType = ''; settling = false })
-    }
-  }, { passive: true })
+    // scrollend: 스냅 완료 후 조용히 실제 카드 위치로 이동
+    grid.addEventListener('scrollend', () => {
+      const sl = Math.round(grid.scrollLeft)
+      if (sl <= lastCloneSnap + 1) {
+        grid.scrollLeft = N * step - SPL       // lastClone → 실제 마지막 카드
+      } else if (sl >= firstCloneSnap - 1) {
+        grid.scrollLeft = step - SPL           // firstClone → 실제 첫 카드
+      }
+    })
+  }))
 }
 
 const maCnt        = ref(0)
@@ -266,7 +265,7 @@ onMounted(async () => {
     })
   }
   await nextTick()
-  setupInfiniteCarousel()
+  setupInfiniteCarousel()  // 내부에서 rAF 2회 후 실행됨
 })
 </script>
 
@@ -343,18 +342,18 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
     display: flex;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
-    scroll-padding-left: 22px;
-    gap: 12px;
-    padding: 0 22px 8px 0;
+    scroll-padding-left: 18px;
+    gap: 8px;
+    padding: 0 10px 8px 0;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     min-width: 0;
   }
   .strategy-grid::-webkit-scrollbar { display: none; }
   .strategy-grid .card {
-    flex: 0 0 93%;
+    flex: 0 0 calc(100% - 28px);
     min-width: 0;
-    max-width: 93%;
+    max-width: calc(100% - 28px);
     overflow: hidden;
     scroll-snap-align: start;
   }
