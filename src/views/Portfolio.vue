@@ -53,10 +53,8 @@
           </thead>
           <tbody>
             <template v-for="p in krPositions" :key="p.code">
-              <tr class="summary-row" @click="toggle(p.code)">
-                <td class="name-col">
-                  <span class="chevron" :class="{ open: isExpanded(p.code) }">›</span>{{ p.name }}
-                </td>
+              <tr class="summary-row" :class="{ expanded: isExpanded(p.code) }" @click="toggle(p.code)">
+                <td class="name-col">{{ p.name }}</td>
                 <td :class="p.pnl >= 0 ? 'pos' : 'neg'">{{ p.pnl >= 0 ? '+' : '' }}{{ fmt(p.pnl) }}</td>
                 <td>{{ fmt(p.eval_amount) }}</td>
                 <td :class="p.pnl_pct >= 0 ? 'pos' : 'neg'">{{ p.pnl_pct >= 0 ? '+' : '' }}{{ p.pnl_pct.toFixed(2) }}%</td>
@@ -64,7 +62,6 @@
               <tr v-if="isExpanded(p.code)" class="detail-row">
                 <td colspan="4">
                   <div class="detail-grid">
-                    <div class="detail-item"><span class="dl">코드</span>{{ p.code }}</div>
                     <div class="detail-item"><span class="dl">수량</span>{{ p.shares }}</div>
                     <div class="detail-item"><span class="dl">평균단가</span>{{ fmt(p.avg_price) }}</div>
                     <div class="detail-item"><span class="dl">현재가</span>{{ fmt(p.current_price) }}</div>
@@ -94,10 +91,8 @@
           </thead>
           <tbody>
             <template v-for="p in usPositions" :key="p.code">
-              <tr class="summary-row" @click="toggle(p.code)">
-                <td class="name-col">
-                  <span class="chevron" :class="{ open: isExpanded(p.code) }">›</span>{{ p.name }}
-                </td>
+              <tr class="summary-row" :class="{ expanded: isExpanded(p.code) }" @click="toggle(p.code)">
+                <td class="name-col">{{ p.name }}</td>
                 <td :class="p.pnl >= 0 ? 'pos' : 'neg'">{{ p.pnl >= 0 ? '+' : '' }}{{ fmt(p.pnl) }}</td>
                 <td>{{ fmt(p.eval_amount) }}원</td>
                 <td :class="p.pnl_pct >= 0 ? 'pos' : 'neg'">{{ p.pnl_pct >= 0 ? '+' : '' }}{{ p.pnl_pct.toFixed(2) }}%</td>
@@ -105,7 +100,6 @@
               <tr v-if="isExpanded(p.code)" class="detail-row">
                 <td colspan="4">
                   <div class="detail-grid">
-                    <div class="detail-item"><span class="dl">코드</span>{{ p.code }}</div>
                     <div class="detail-item"><span class="dl">수량</span>{{ p.shares }}</div>
                     <div class="detail-item"><span class="dl">평균단가</span>${{ fmtUsd(p.avg_price) }}</div>
                     <div class="detail-item"><span class="dl">현재가</span>${{ fmtUsd(p.current_price) }}</div>
@@ -263,19 +257,11 @@ tr:last-child td { border-bottom: none; }
 
 .summary-row { cursor: pointer; }
 .summary-row:hover { background: #fafafa; }
+.summary-row.expanded td { background: #f0f5ff; }
+.summary-row.expanded td:first-child { border-left: 3px solid #2563eb; }
 .name-col { font-weight: 500; }
-.chevron {
-  display: inline-block;
-  color: #ccc;
-  font-size: 16px;
-  line-height: 1;
-  margin-right: 4px;
-  transition: transform 0.2s ease;
-  transform: rotate(0deg);
-}
-.chevron.open { transform: rotate(90deg); color: #2563eb; }
 
-.detail-row td { background: #f8f9ff; padding: 12px 16px; }
+.detail-row td { background: #f0f5ff; padding: 12px 16px; border-left: 3px solid #2563eb; }
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
