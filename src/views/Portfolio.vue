@@ -4,6 +4,15 @@
 
     <div v-if="loading" class="empty">불러오는 중...</div>
     <template v-else>
+      <!-- 수익률 추이 차트 -->
+      <div class="section chart-section" v-if="chartData">
+        <h2>수익률 추이</h2>
+        <div class="chart-wrap">
+          <Line :data="chartData" :options="chartOptions" />
+        </div>
+      </div>
+
+      <!-- 요약 메트릭 -->
       <div class="metrics">
         <div class="metric">
           <div class="label">총 자산</div>
@@ -21,6 +30,10 @@
         <div class="metric">
           <div class="label">평가금액</div>
           <div class="value">{{ fmt(s.total_eval) }}원</div>
+          <div class="sub-row">
+            <span class="sub">🇰🇷 {{ fmt(s.kr_eval) }}</span>
+            <span class="sub">🇺🇸 {{ fmt(s.us_eval) }}</span>
+          </div>
         </div>
         <div class="metric">
           <div class="label">현금</div>
@@ -28,9 +41,10 @@
         </div>
       </div>
 
+      <!-- 국내 주식 섹션 -->
       <div class="section">
-        <h2>보유 종목</h2>
-        <div v-if="!positions.length" class="empty">보유 종목 없음</div>
+        <h2>🇰🇷 국내 주식</h2>
+        <div v-if="!krPositions.length" class="empty">보유 종목 없음</div>
         <table v-else>
           <thead>
             <tr>
@@ -41,7 +55,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="p in positions" :key="p.code">
+            <tr v-for="p in krPositions" :key="p.code">
               <td>{{ p.code }}</td>
               <td>{{ p.name }}</td>
               <td>{{ p.shares }}</td>
@@ -57,20 +71,85 @@
           </tbody>
         </table>
       </div>
+
+      <!-- 해외 주식 섹션 -->
+      <div class="section">
+        <h2>
+          🇺🇸 해외 주식
+          <span v-if="s.usd_rate" class="exchange-rate">USD/KRW {{ s.usd_rate.toLocaleString() }}원</span>
+        </h2>
+        <div v-if="!usPositions.length" class="empty">보유 종목 없음</div>
+        <table v-else class="us-table">
+          <thead>
+            <tr>
+              <th>코드</th><th>종목명</th><th>수량</th>
+              <th>평균단가(USD)</th><th>현재가(USD)</th><th>평가금액</th>
+              <th>손익</th><th>수익률</th><th>최고수익</th>
+              <th>매수일</th><th>전략</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in usPositions" :key="p.code">
+              <td>{{ p.code }}</td>
+              <td>{{ p.name }}</td>
+              <td>{{ p.shares }}</td>
+              <td>${{ fmtUsd(p.avg_price) }}</td>
+              <td>${{ fmtUsd(p.current_price) }}</td>
+              <td>{{ fmt(p.eval_amount) }}원</td>
+              <td :class="p.pnl >= 0 ? 'pos' : 'neg'">{{ p.pnl >= 0 ? '+' : '' }}{{ fmt(p.pnl) }}</td>
+              <td :class="p.pnl_pct >= 0 ? 'pos' : 'neg'">{{ p.pnl_pct >= 0 ? '+' : '' }}{{ p.pnl_pct.toFixed(2) }}%</td>
+              <td class="peak">{{ p.peak_pnl_pct > 0 ? p.peak_pnl_pct.toFixed(1) + '%' : '-' }}</td>
+              <td>{{ p.buy_date }}</td>
+              <td>{{ fmtStrategy(p.strategy) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { fetchPortfolio } from '../api.js'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { Line } from 'vue-chartjs'
+import {
+  Chart as ChartJS, CategoryScale, LinearScale, PointElement,
+  LineElement, Tooltip, Filler
+} from 'chart.js'
+import { fetchPortfolio, fetchSnapshotHistory } from '../api.js'
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
 const loading = ref(true)
-const s = ref({ total_asset: 0, total_pnl: 0, total_pnl_pct: 0, total_eval: 0, cash: 0 })
+const s = ref({ total_asset: 0, total_pnl: 0, total_pnl_pct: 0, total_eval: 0, kr_eval: 0, us_eval: 0, cash: 0, usd_rate: null })
 const positions = ref([])
+const chartData = ref(null)
 let timer
 
-const labels = { ma_cross: 'MA크로스', rsi_reversal: 'RSI역발산' }
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  interaction: { mode: 'index', intersect: false },
+  plugins: { legend: { display: false }, tooltip: {
+    callbacks: {
+      label: ctx => `  ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}%`
+    }
+  }},
+  scales: {
+    x: { display: false },
+    y: {
+      grace: '10%',
+      grid: { color: '#f0f0f0' },
+      ticks: { font: { size: 11 }, color: '#aaa', callback: v => `${v >= 0 ? '+' : ''}${v}%` },
+      border: { display: false },
+    }
+  }
+}
+
+const krPositions = computed(() => positions.value.filter(p => p.market !== 'US'))
+const usPositions = computed(() => positions.value.filter(p => p.market === 'US'))
+
+const labels = { ma_cross: 'MA크로스', rsi_reversal: 'RSI역발산', bb_reversal: 'BB반등', breakout_52w: '52주신고가' }
 const fmtStrategy = v => (Array.isArray(v) ? v : [v]).map(x => labels[x] || x).join('+')
 const fmt = n => {
   const rounded = Math.round(n)
@@ -78,12 +157,36 @@ const fmt = n => {
   const str = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return rounded < 0 ? '-' + str : str
 }
+const fmtUsd = n => (n == null ? '-' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
 
 async function load() {
   try {
-    const data = await fetchPortfolio()
+    const [data, history] = await Promise.all([fetchPortfolio(), fetchSnapshotHistory()])
     s.value = data.summary
     positions.value = data.positions
+
+    if (history.length > 1) {
+      const isProfit = history[history.length - 1].pnl_pct >= 0
+      const color = isProfit ? '#dc2626' : '#2563eb'
+      chartData.value = {
+        labels: history.map(h => h.date),
+        datasets: [{
+          data: history.map(h => h.pnl_pct),
+          borderColor: color,
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          fill: true,
+          backgroundColor: ctx => {
+            const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height)
+            gradient.addColorStop(0, isProfit ? 'rgba(220,38,38,0.15)' : 'rgba(37,99,235,0.15)')
+            gradient.addColorStop(1, 'rgba(255,255,255,0)')
+            return gradient
+          },
+          tension: 0.3,
+        }]
+      }
+    }
   } finally {
     loading.value = false
   }
@@ -95,7 +198,8 @@ onUnmounted(() => clearInterval(timer))
 
 <style scoped>
 h1 { font-size: 22px; font-weight: 700; margin-bottom: 24px; }
-h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+.exchange-rate { font-size: 12px; font-weight: 400; color: #888; background: #f3f4f6; padding: 2px 8px; border-radius: 10px; }
 
 .metrics {
   display: grid;
@@ -112,9 +216,15 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
 }
 .metric .label { font-size: 13px; color: #666; margin-bottom: 6px; }
 .metric .value { font-size: 22px; font-weight: 700; }
-.metric .sub { font-size: 13px; margin-top: 4px; }
+.metric .sub { font-size: 12px; margin-top: 4px; color: #888; }
+.sub-row { display: flex; gap: 2px 6px; margin-top: 4px; flex-wrap: wrap; }
+.sub-row .sub { margin-top: 0; }
 
-.section { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow-x: auto; }
+.section { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow-x: auto; margin-bottom: 20px; }
+.chart-section { overflow: hidden; }
+.chart-wrap { height: 220px; }
+
+@media (max-width: 768px) { .chart-wrap { height: 160px; } }
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { text-align: left; padding: 8px 10px; border-bottom: 2px solid #eee; color: #555; font-weight: 600; white-space: nowrap; }
@@ -128,9 +238,10 @@ tr:last-child td { border-bottom: none; }
 
 @media (max-width: 768px) {
   .metrics { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
-  .metric { padding: 14px; }
   .metric .value { font-size: 18px; }
-  .section { padding: 12px; overflow-x: visible; }
+  h2 { font-size: 15px; }
+  .metric { padding: 14px; }
+  .section { padding: 16px; overflow-x: visible; margin-bottom: 16px; }
   h1 { font-size: 18px; margin-bottom: 16px; }
 
   table, thead, tbody, tr { display: block; }
@@ -158,16 +269,29 @@ tr:last-child td { border-bottom: none; }
     flex-shrink: 0;
     margin-right: 8px;
   }
-  td:nth-child(1)::before { content: '코드'; }
-  td:nth-child(2)::before { content: '종목명'; }
-  td:nth-child(3)::before { content: '수량'; }
-  td:nth-child(4)::before { content: '평균단가'; }
-  td:nth-child(5)::before { content: '현재가'; }
-  td:nth-child(6)::before { content: '평가금액'; }
-  td:nth-child(7)::before { content: '손익'; }
-  td:nth-child(8)::before { content: '수익률'; }
-  td:nth-child(9)::before { content: '최고수익'; }
-  td:nth-child(10)::before { content: '매수일'; }
-  td:nth-child(11)::before { content: '전략'; }
+  /* 국내 주식 테이블 */
+  table:not(.us-table) td:nth-child(1)::before { content: '코드'; }
+  table:not(.us-table) td:nth-child(2)::before { content: '종목명'; }
+  table:not(.us-table) td:nth-child(3)::before { content: '수량'; }
+  table:not(.us-table) td:nth-child(4)::before { content: '평균단가'; }
+  table:not(.us-table) td:nth-child(5)::before { content: '현재가'; }
+  table:not(.us-table) td:nth-child(6)::before { content: '평가금액'; }
+  table:not(.us-table) td:nth-child(7)::before { content: '손익'; }
+  table:not(.us-table) td:nth-child(8)::before { content: '수익률'; }
+  table:not(.us-table) td:nth-child(9)::before { content: '최고수익'; }
+  table:not(.us-table) td:nth-child(10)::before { content: '매수일'; }
+  table:not(.us-table) td:nth-child(11)::before { content: '전략'; }
+  /* 해외 주식 테이블 */
+  .us-table td:nth-child(1)::before { content: '코드'; }
+  .us-table td:nth-child(2)::before { content: '종목명'; }
+  .us-table td:nth-child(3)::before { content: '수량'; }
+  .us-table td:nth-child(4)::before { content: '평균단가(USD)'; }
+  .us-table td:nth-child(5)::before { content: '현재가(USD)'; }
+  .us-table td:nth-child(6)::before { content: '평가금액'; }
+  .us-table td:nth-child(7)::before { content: '손익'; }
+  .us-table td:nth-child(8)::before { content: '수익률'; }
+  .us-table td:nth-child(9)::before { content: '최고수익'; }
+  .us-table td:nth-child(10)::before { content: '매수일'; }
+  .us-table td:nth-child(11)::before { content: '전략'; }
 }
 </style>

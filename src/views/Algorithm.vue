@@ -7,69 +7,167 @@
 
     <div v-if="cfg" class="strategy-layout">
 
-      <!-- 전략별 성과 테이블 -->
+      <!-- 전략별 성과: 접기/펼치기 -->
       <div class="perf-section">
-        <div class="section-title">전략별 성과</div>
-        <div class="perf-table-wrap">
-          <table class="perf-table">
-            <thead>
-              <tr>
-                <th>전략</th>
-                <th>거래수</th>
-                <th>승률</th>
-                <th>평균수익률</th>
-                <th>총손익</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="s in strategyRows" :key="s.key">
-                <td class="strategy-name">{{ s.label }}</td>
-                <td>{{ s.trades > 0 ? s.trades : '-' }}</td>
-                <td>{{ s.trades > 0 ? s.winRate : '-' }}</td>
-                <td :class="s.trades > 0 ? pnlClass(s.avgPnlPct) : ''">
-                  {{ s.trades > 0 ? s.avgPnlPct : '-' }}
-                </td>
-                <td :class="s.trades > 0 ? pnlClass(s.totalPnl) : ''">
-                  {{ s.trades > 0 ? s.totalPnlFormatted : '-' }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="perf-header" @click="perfOpen = !perfOpen">
+          <div class="section-title">전략별 성과</div>
+          <span class="toggle-btn">{{ perfOpen ? '▲ 접기' : '▼ 펼치기' }}</span>
+        </div>
+
+        <!-- 펼친 상태: 전체 테이블 -->
+        <table v-if="perfOpen" class="perf-table">
+          <thead>
+            <tr>
+              <th>전략명</th>
+              <th>거래수</th>
+              <th>승률</th>
+              <th>평균수익률</th>
+              <th>총손익</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in strategyStats" :key="row.strategy">
+              <td>{{ STRATEGY_LABELS[row.strategy] }}</td>
+              <td>{{ row.trades ?? '-' }}</td>
+              <td>{{ row.winRate != null ? row.winRate + '%' : '-' }}</td>
+              <td :class="pnlClass(row.avgPnlPct)">{{ row.avgPnlPct != null ? (row.avgPnlPct > 0 ? '+' : '') + row.avgPnlPct + '%' : '-' }}</td>
+              <td :class="pnlClass(row.totalPnl)">{{ row.totalPnl != null ? formatPnl(row.totalPnl) : '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- 닫힌 상태: 요약 -->
+        <div v-else class="perf-summary">
+          <div v-for="row in strategyStats" :key="row.strategy" class="perf-chip">
+            <span class="chip-name">{{ STRATEGY_LABELS[row.strategy] }}</span>
+            <span v-if="row.trades" class="chip-stats">
+              <span :class="pnlClass(row.winRate - 50)">승률 {{ row.winRate }}%</span>
+              <span class="chip-sep">·</span>
+              <span :class="pnlClass(row.totalPnl)">{{ formatPnl(row.totalPnl) }}원</span>
+            </span>
+            <span v-else class="chip-no-data">-</span>
+          </div>
         </div>
       </div>
 
-      <!-- 전략 카드: 모바일=스와이프, 데스크탑=그리드 -->
-      <div class="cards-wrapper">
+      <!-- 전략 카드: 듀얼 모멘텀 포함 (데스크탑 2열 / 모바일 스와이프) -->
+      <div class="strategy-grid" ref="gridRef">
 
-        <!-- 모바일 스와이프 -->
-        <div class="swipe-container" ref="track" @touchstart="onTouchStart" @touchend="onTouchEnd">
-          <div
-            class="swipe-track"
-            :style="trackStyle"
-            @transitionend="onTransitionEnd"
-          >
-            <div v-for="(card, i) in clonedCards" :key="i" class="swipe-card">
-              <component :is="card.component" :cfg="cfg" :count="card.count" />
-            </div>
+        <!-- 듀얼 모멘텀 게이트 (데스크탑: full-width, 모바일: 첫 번째 카드) -->
+        <div class="card gate-card">
+          <div class="card-title">🚦 듀얼 모멘텀 <span class="badge gate">시장 게이트</span></div>
+          <div class="block">
+            <div class="block-title">왜 이 전략?</div>
+            <p>모든 전략의 최상위 관문입니다. KOSPI의 {{ cfg.lookback_52w }}거래일(약 1년) 수익률이 음수이면 시장 전체가 하락 중이라고 판단하고 스캔을 중단, 신규 매수를 전면 차단합니다. Gary Antonacci의 듀얼 모멘텀 이론 중 절대 모멘텀을 적용한 것입니다.</p>
           </div>
-          <div class="swipe-dots">
-            <span
-              v-for="(card, i) in cards"
-              :key="i"
-              class="dot"
-              :class="{ active: i === realIndex }"
-              @click="goTo(i)"
-            />
+          <div class="block">
+            <div class="block-title">동작 흐름</div>
+            <div class="flow">
+              <div class="flow-item"><span class="tag buy">체크</span> KOSPI 현재가 vs {{ cfg.lookback_52w }}거래일 전 가격 비교</div>
+              <div class="flow-item"><span class="tag sell">차단</span> 1년 수익률 음수 → 스캔 중단, 대기 매수 전면 취소</div>
+              <div class="flow-item"><span class="tag trail">통과</span> 1년 수익률 양수 → 아래 전략 활성화</div>
+            </div>
           </div>
         </div>
 
-        <!-- 데스크탑 그리드 -->
-        <div class="strategy-grid desktop-only">
-          <CardDualMomentum :cfg="cfg" />
-          <CardMaCross :cfg="cfg" :count="maCnt" />
-          <CardBreakout :cfg="cfg" :count="breakoutCnt" />
-          <CardBB :cfg="cfg" :count="bbCnt" />
-          <CardRSI :cfg="cfg" :count="rsiCnt" />
+        <!-- MA 크로스 -->
+        <div class="card">
+          <div class="card-title">📈 MA 크로스 <span class="badge trend-up">ADX ≥ 25, +DI 우세</span></div>
+          <div class="block">
+            <div class="block-title">왜 이 전략?</div>
+            <p>강한 상승추세에서 이동평균선 골든크로스를 포착합니다. ADX가 25 이상이고 +DI가 -DI보다 클 때 — 즉 방향이 위를 향한 추세장에서만 진입합니다.</p>
+          </div>
+          <div class="block">
+            <div class="block-title">매수 · 매도 흐름</div>
+            <div class="flow">
+              <div class="flow-item"><span class="tag buy">발굴</span> {{ cfg.short_ma }}일선이 {{ cfg.long_ma }}일선을 상향 돌파 (골든크로스)</div>
+              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
+              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
+              <div class="flow-item"><span class="tag sell">매도</span> 데드크로스 발생 즉시 전량 매도</div>
+              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
+            </div>
+          </div>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="label">마지막 스캔 발굴</div>
+              <div class="value">{{ maCnt }}종목</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 52주 신고가 돌파 -->
+        <div class="card">
+          <div class="card-title">🔴 52주 신고가 돌파 <span class="badge trend-up">ADX ≥ 25, +DI 우세</span></div>
+          <div class="block">
+            <div class="block-title">왜 이 전략?</div>
+            <p>강한 상승추세에서 MA 크로스보다 더 강력한 모멘텀을 포착합니다. {{ cfg.lookback_52w }}거래일 신고가를 돌파한 종목은 저항선이 사라지고 추가 상승 모멘텀이 가장 강한 상태입니다.</p>
+          </div>
+          <div class="block">
+            <div class="block-title">매수 · 매도 흐름</div>
+            <div class="flow">
+              <div class="flow-item"><span class="tag buy">발굴</span> 오늘 종가가 {{ cfg.lookback_52w }}거래일 최고가를 돌파</div>
+              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
+              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
+              <div class="flow-item"><span class="tag sell">매도</span> 데드크로스 발생 시 전량 매도</div>
+              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
+            </div>
+          </div>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="label">마지막 스캔 발굴</div>
+              <div class="value">{{ breakoutCnt }}종목</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 볼린저 밴드 반등 -->
+        <div class="card">
+          <div class="card-title">🔵 볼린저 밴드 반등 <span class="badge neutral">ADX 20~25</span></div>
+          <div class="block">
+            <div class="block-title">왜 이 전략?</div>
+            <p>ADX 20~25 횡보/불명확 구간을 커버합니다. 방향성이 애매한 시장에서 볼린저 밴드 하단 터치 후 반등을 포착합니다. RSI보다 변동성 정보가 추가로 반영되어 진입 타이밍이 더 정교합니다.</p>
+          </div>
+          <div class="block">
+            <div class="block-title">매수 · 매도 흐름</div>
+            <div class="flow">
+              <div class="flow-item"><span class="tag buy">발굴</span> {{ cfg.bb_period }}일 이동평균 ± {{ cfg.bb_std }}σ 하단 터치 후 반등 확인</div>
+              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
+              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
+              <div class="flow-item"><span class="tag sell">매도</span> 볼린저 밴드 중간선({{ cfg.bb_period }}일 MA) 도달 시</div>
+              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -5% 도달 시</div>
+            </div>
+          </div>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="label">마지막 스캔 발굴</div>
+              <div class="value">{{ bbCnt }}종목</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RSI 역발산 -->
+        <div class="card">
+          <div class="card-title">🟣 RSI 역발산 <span class="badge sideways">ADX &lt; 20</span></div>
+          <div class="block">
+            <div class="block-title">왜 이 전략?</div>
+            <p>약한 횡보장(ADX &lt; 20)에서 RSI 과매도 구간의 반등을 노립니다. 방향성이 없는 시장에서 추세 전략은 잦은 손절을 유발하므로, 낙폭 과대 종목의 단기 반등이 유효합니다.</p>
+          </div>
+          <div class="block">
+            <div class="block-title">매수 · 매도 흐름</div>
+            <div class="flow">
+              <div class="flow-item"><span class="tag buy">발굴</span> RSI ≤ {{ cfg.rsi_buy_threshold }} (과매도 구간 진입)</div>
+              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
+              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
+              <div class="flow-item"><span class="tag sell">매도</span> RSI ≥ {{ cfg.rsi_sell_threshold }} 도달 시 전량 매도</div>
+              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -5% 도달 시</div>
+            </div>
+          </div>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="label">마지막 스캔 발굴</div>
+              <div class="value">{{ rsiCnt }}종목</div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -78,28 +176,87 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, defineComponent, h } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { fetchConfig, fetchScans, fetchStrategyStats } from '../api.js'
 
-// ── 데이터 ──────────────────────────────────────────────────────────────
-const cfg          = ref(null)
+const STRATEGY_LABELS = {
+  ma_cross:     'MA 크로스',
+  breakout_52w: '52주 신고가',
+  bb_reversal:  'BB 반등',
+  rsi_reversal: 'RSI 역발산',
+}
+
+const perfOpen = ref(false)
+const cfg = ref(null)
+const gridRef = ref(null)
+
+function setupInfiniteCarousel() {
+  const grid = gridRef.value
+  if (!grid || window.innerWidth > 768) return
+
+  const realCards = [...grid.children]
+  const N = realCards.length
+  if (N < 2) return
+
+  const lastClone  = realCards[N - 1].cloneNode(true)
+  const firstClone = realCards[0].cloneNode(true)
+  grid.insertBefore(lastClone, realCards[0])
+  grid.appendChild(firstClone)
+
+  const cardW = grid.children[1].offsetWidth
+  const gap   = 12
+  const SPL   = 22
+  const step  = cardW + gap
+
+  grid.style.scrollSnapType = 'none'
+  grid.scrollLeft = step - SPL
+  requestAnimationFrame(() => { grid.style.scrollSnapType = '' })
+
+  let settling = false
+  grid.addEventListener('scroll', () => {
+    if (settling) return
+    const sl    = Math.round(grid.scrollLeft)
+    const maxSl = Math.round(grid.scrollWidth - grid.clientWidth)
+
+    if (sl <= 1) {
+      settling = true
+      grid.style.scrollSnapType = 'none'
+      grid.scrollLeft = N * step - SPL
+      requestAnimationFrame(() => { grid.style.scrollSnapType = ''; settling = false })
+    } else if (sl >= maxSl - 1) {
+      settling = true
+      grid.style.scrollSnapType = 'none'
+      grid.scrollLeft = step - SPL
+      requestAnimationFrame(() => { grid.style.scrollSnapType = ''; settling = false })
+    }
+  }, { passive: true })
+}
+
 const maCnt        = ref(0)
 const rsiCnt       = ref(0)
 const bbCnt        = ref(0)
 const breakoutCnt  = ref(0)
 const lastScanDate = ref('-')
-const stats        = ref({})
+const strategyStats = ref([])
+
+function pnlClass(val) {
+  if (val == null) return ''
+  return val > 0 ? 'profit' : val < 0 ? 'loss' : ''
+}
+
+function formatPnl(val) {
+  const sign = val >= 0 ? '+' : ''
+  return sign + val.toLocaleString()
+}
 
 onMounted(async () => {
-  const [config, scans, stratStats] = await Promise.all([
-    fetchConfig(), fetchScans(), fetchStrategyStats()
-  ])
-  cfg.value   = config
-  stats.value = stratStats
+  const [config, scans, stats] = await Promise.all([fetchConfig(), fetchScans(), fetchStrategyStats()])
+  cfg.value = config
+  strategyStats.value = stats
 
   if (scans.length) {
     const last = scans[scans.length - 1]
-    lastScanDate.value = last.scanned_at
+    lastScanDate.value = last.scanned_at.slice(0, 10) + ' ' + last.scanned_at.slice(11, 16)
     last.results.forEach(r => {
       const s = Array.isArray(r.strategy) ? r.strategy : [r.strategy || 'ma_cross']
       if (s.includes('ma_cross'))      maCnt.value++
@@ -108,298 +265,100 @@ onMounted(async () => {
       if (s.includes('breakout_52w'))  breakoutCnt.value++
     })
   }
+  await nextTick()
+  setupInfiniteCarousel()
 })
-
-// ── 성과 테이블 ──────────────────────────────────────────────────────────
-const STRATEGY_LABELS = {
-  ma_cross:     'MA 크로스',
-  breakout_52w: '52주 신고가',
-  bb_reversal:  'BB 반등',
-  rsi_reversal: 'RSI 역발산',
-}
-
-const strategyRows = computed(() =>
-  Object.entries(STRATEGY_LABELS).map(([key, label]) => {
-    const s = stats.value[key] ?? { trades: 0, wins: 0, totalPnl: 0, totalPnlPct: 0 }
-    const avgPnlPct = s.trades > 0 ? s.totalPnlPct / s.trades : 0
-    return {
-      key,
-      label,
-      trades: s.trades,
-      winRate: s.trades > 0 ? `${Math.round((s.wins / s.trades) * 100)}%` : '-',
-      avgPnlPct: s.trades > 0 ? `${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(1)}%` : '-',
-      totalPnl: s.totalPnl,
-      totalPnlFormatted: s.trades > 0
-        ? `${s.totalPnl >= 0 ? '+' : ''}${Math.round(s.totalPnl).toLocaleString()}`
-        : '-',
-    }
-  })
-)
-
-function pnlClass(val) {
-  if (typeof val === 'string') val = parseFloat(val)
-  return val > 0 ? 'pos' : val < 0 ? 'neg' : ''
-}
-
-// ── 카드 컴포넌트 정의 ────────────────────────────────────────────────────
-const CardDualMomentum = defineComponent({
-  props: ['cfg'],
-  setup(props) {
-    return () => h('div', { class: 'card gate-card' }, [
-      h('div', { class: 'card-title' }, [
-        '🚦 듀얼 모멘텀 ',
-        h('span', { class: 'badge gate' }, '시장 게이트'),
-      ]),
-      h('div', { class: 'block' }, [
-        h('div', { class: 'block-title' }, '왜 이 전략?'),
-        h('p', `모든 전략의 최상위 관문입니다. KOSPI의 ${props.cfg?.lookback_52w}거래일(약 1년) 수익률이 음수이면 시장 전체가 하락 중이라고 판단하고 스캔을 중단, 신규 매수를 전면 차단합니다. Gary Antonacci의 듀얼 모멘텀 이론 중 절대 모멘텀을 적용한 것입니다.`),
-      ]),
-      h('div', { class: 'block' }, [
-        h('div', { class: 'block-title' }, '동작 흐름'),
-        h('div', { class: 'flow' }, [
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag buy' }, '체크'), ` KOSPI 현재가 vs ${props.cfg?.lookback_52w}거래일 전 가격 비교`]),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag sell' }, '차단'), ' 1년 수익률 음수 → 스캔 중단, 대기 매수 전면 취소']),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag trail' }, '통과'), ' 1년 수익률 양수 → 아래 전략 활성화']),
-        ]),
-      ]),
-    ])
-  },
-})
-
-const CardMaCross = defineComponent({
-  props: ['cfg', 'count'],
-  setup(props) {
-    return () => h('div', { class: 'card' }, [
-      h('div', { class: 'card-title' }, ['📈 MA 크로스 ', h('span', { class: 'badge trend-up' }, 'ADX ≥ 25, +DI 우세')]),
-      h('div', { class: 'block' }, [
-        h('div', { class: 'block-title' }, '왜 이 전략?'),
-        h('p', `강한 상승추세에서 이동평균선 골든크로스를 포착합니다. ADX가 25 이상이고 +DI가 -DI보다 클 때 — 즉 방향이 위를 향한 추세장에서만 진입합니다.`),
-      ]),
-      h('div', { class: 'block' }, [
-        h('div', { class: 'block-title' }, '매수 · 매도 흐름'),
-        h('div', { class: 'flow' }, [
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag buy' }, '발굴'), ` ${props.cfg?.short_ma}일선이 ${props.cfg?.long_ma}일선을 상향 돌파 (골든크로스)`]),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag buy' }, '매수'), ' ATR 범위 안에서 체결 확인 후 진입']),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag trail' }, '익절'), ` 최고 수익 +${props.cfg?.trailing_activation}% 후 최고점 대비 -${props.cfg?.trailing_drop}% 이탈 시`]),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag sell' }, '매도'), ' 데드크로스 발생 즉시 전량 매도']),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag loss' }, '손절'), ' 매수가 대비 -7% 도달 시']),
-        ]),
-      ]),
-      h('div', { class: 'metric-row' }, [
-        h('div', { class: 'metric' }, [
-          h('div', { class: 'label' }, '마지막 스캔 발굴'),
-          h('div', { class: 'value' }, `${props.count}종목`),
-        ]),
-      ]),
-    ])
-  },
-})
-
-const CardBreakout = defineComponent({
-  props: ['cfg', 'count'],
-  setup(props) {
-    return () => h('div', { class: 'card' }, [
-      h('div', { class: 'card-title' }, ['🔴 52주 신고가 돌파 ', h('span', { class: 'badge trend-up' }, 'ADX ≥ 25, +DI 우세')]),
-      h('div', { class: 'block' }, [
-        h('div', { class: 'block-title' }, '왜 이 전략?'),
-        h('p', `강한 상승추세에서 MA 크로스보다 더 강력한 모멘텀을 포착합니다. ${props.cfg?.lookback_52w}거래일 신고가를 돌파한 종목은 저항선이 사라지고 추가 상승 모멘텀이 가장 강한 상태입니다.`),
-      ]),
-      h('div', { class: 'block' }, [
-        h('div', { class: 'block-title' }, '매수 · 매도 흐름'),
-        h('div', { class: 'flow' }, [
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag buy' }, '발굴'), ` 오늘 종가가 ${props.cfg?.lookback_52w}거래일 최고가를 돌파`]),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag buy' }, '매수'), ' ATR 범위 안에서 체결 확인 후 진입']),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag trail' }, '익절'), ` 최고 수익 +${props.cfg?.trailing_activation}% 후 최고점 대비 -${props.cfg?.trailing_drop}% 이탈 시`]),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag sell' }, '매도'), ' 데드크로스 발생 시 전량 매도']),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag loss' }, '손절'), ' 매수가 대비 -7% 도달 시']),
-        ]),
-      ]),
-      h('div', { class: 'metric-row' }, [
-        h('div', { class: 'metric' }, [
-          h('div', { class: 'label' }, '마지막 스캔 발굴'),
-          h('div', { class: 'value' }, `${props.count}종목`),
-        ]),
-      ]),
-    ])
-  },
-})
-
-const CardBB = defineComponent({
-  props: ['cfg', 'count'],
-  setup(props) {
-    return () => h('div', { class: 'card' }, [
-      h('div', { class: 'card-title' }, ['🔵 볼린저 밴드 반등 ', h('span', { class: 'badge neutral' }, 'ADX 20~25')]),
-      h('div', { class: 'block' }, [
-        h('div', { class: 'block-title' }, '왜 이 전략?'),
-        h('p', `ADX 20~25 횡보/불명확 구간을 커버합니다. 방향성이 애매한 시장에서 볼린저 밴드 하단 터치 후 반등을 포착합니다. RSI보다 변동성 정보가 추가로 반영되어 진입 타이밍이 더 정교합니다.`),
-      ]),
-      h('div', { class: 'block' }, [
-        h('div', { class: 'block-title' }, '매수 · 매도 흐름'),
-        h('div', { class: 'flow' }, [
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag buy' }, '발굴'), ` ${props.cfg?.bb_period}일 이동평균 ± ${props.cfg?.bb_std}σ 하단 터치 후 반등 확인`]),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag buy' }, '매수'), ' ATR 범위 안에서 체결 확인 후 진입']),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag trail' }, '익절'), ` 최고 수익 +${props.cfg?.trailing_activation}% 후 최고점 대비 -${props.cfg?.trailing_drop}% 이탈 시`]),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag sell' }, '매도'), ` 볼린저 밴드 중간선(${props.cfg?.bb_period}일 MA) 도달 시`]),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag loss' }, '손절'), ' 매수가 대비 -5% 도달 시']),
-        ]),
-      ]),
-      h('div', { class: 'metric-row' }, [
-        h('div', { class: 'metric' }, [
-          h('div', { class: 'label' }, '마지막 스캔 발굴'),
-          h('div', { class: 'value' }, `${props.count}종목`),
-        ]),
-      ]),
-    ])
-  },
-})
-
-const CardRSI = defineComponent({
-  props: ['cfg', 'count'],
-  setup(props) {
-    return () => h('div', { class: 'card' }, [
-      h('div', { class: 'card-title' }, ['🟣 RSI 역발산 ', h('span', { class: 'badge sideways' }, 'ADX < 20')]),
-      h('div', { class: 'block' }, [
-        h('div', { class: 'block-title' }, '왜 이 전략?'),
-        h('p', `약한 횡보장(ADX < 20)에서 RSI 과매도 구간의 반등을 노립니다. 방향성이 없는 시장에서 추세 전략은 잦은 손절을 유발하므로, 낙폭 과대 종목의 단기 반등이 유효합니다.`),
-      ]),
-      h('div', { class: 'block' }, [
-        h('div', { class: 'block-title' }, '매수 · 매도 흐름'),
-        h('div', { class: 'flow' }, [
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag buy' }, '발굴'), ` RSI ≤ ${props.cfg?.rsi_buy_threshold} (과매도 구간 진입)`]),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag buy' }, '매수'), ' ATR 범위 안에서 체결 확인 후 진입']),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag trail' }, '익절'), ` 최고 수익 +${props.cfg?.trailing_activation}% 후 최고점 대비 -${props.cfg?.trailing_drop}% 이탈 시`]),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag sell' }, '매도'), ` RSI ≥ ${props.cfg?.rsi_sell_threshold} 도달 시 전량 매도`]),
-          h('div', { class: 'flow-item' }, [h('span', { class: 'tag loss' }, '손절'), ' 매수가 대비 -5% 도달 시']),
-        ]),
-      ]),
-      h('div', { class: 'metric-row' }, [
-        h('div', { class: 'metric' }, [
-          h('div', { class: 'label' }, '마지막 스캔 발굴'),
-          h('div', { class: 'value' }, `${props.count}종목`),
-        ]),
-      ]),
-    ])
-  },
-})
-
-// ── 스와이프 캐러셀 ──────────────────────────────────────────────────────
-const cards = computed(() => [
-  { component: CardDualMomentum, count: 0 },
-  { component: CardMaCross,      count: maCnt.value },
-  { component: CardBreakout,     count: breakoutCnt.value },
-  { component: CardBB,           count: bbCnt.value },
-  { component: CardRSI,          count: rsiCnt.value },
-])
-
-// 클론 트릭: [마지막 클론, ...실제카드, 첫번째 클론]
-const clonedCards = computed(() => {
-  const c = cards.value
-  if (!c.length) return c
-  return [c[c.length - 1], ...c, c[0]]
-})
-
-// 실제 인덱스 (클론 오프셋 제거)
-const currentIndex = ref(1) // clonedCards 기준, 1이 실제 첫번째
-const isAnimating  = ref(false)
-
-const realIndex = computed(() => {
-  const n = cards.value.length
-  if (n === 0) return 0
-  return ((currentIndex.value - 1) + n) % n
-})
-
-const trackStyle = computed(() => ({
-  transform: `translateX(${-currentIndex.value * 100}%)`,
-  transition: isAnimating.value ? 'transform 0.3s ease' : 'none',
-}))
-
-function goTo(realIdx) {
-  isAnimating.value = true
-  currentIndex.value = realIdx + 1
-}
-
-function onTransitionEnd() {
-  const n = cards.value.length
-  if (currentIndex.value === 0) {
-    isAnimating.value = false
-    currentIndex.value = n
-  } else if (currentIndex.value === n + 1) {
-    isAnimating.value = false
-    currentIndex.value = 1
-  } else {
-    isAnimating.value = false
-  }
-}
-
-// 터치 스와이프
-const touchStartX = ref(0)
-function onTouchStart(e) {
-  touchStartX.value = e.touches[0].clientX
-}
-function onTouchEnd(e) {
-  const dx = e.changedTouches[0].clientX - touchStartX.value
-  if (Math.abs(dx) < 30) return
-  isAnimating.value = true
-  if (dx < 0) currentIndex.value++
-  else        currentIndex.value--
-}
 </script>
 
 <style scoped>
 h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .caption { color: #888; font-size: 13px; margin-bottom: 24px; }
-.strategy-layout { display: flex; flex-direction: column; gap: 24px; }
+.strategy-layout { display: flex; flex-direction: column; gap: 20px; overflow-x: hidden; }
 
-/* ── 성과 테이블 ── */
-.perf-section {}
-.section-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #1a1a2e; }
-.perf-table-wrap { overflow-x: auto; }
-.perf-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-.perf-table th {
-  text-align: left;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #888;
-  border-bottom: 1px solid #f0f0f0;
-  white-space: nowrap;
-}
-.perf-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #f8f8f8;
-  white-space: nowrap;
-}
-.strategy-name { font-weight: 600; color: #1a1a2e; }
-.pos { color: #dc2626; font-weight: 600; }
-.neg { color: #1d4ed8; font-weight: 600; }
+/* 성과 테이블 */
+.perf-section { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.perf-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 14px; user-select: none; }
+.section-title { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+.toggle-btn { font-size: 12px; color: #aaa; }
+.perf-summary { display: flex; flex-direction: column; gap: 0; }
+.perf-chip { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+.perf-chip:last-child { border-bottom: none; }
+.chip-name { color: #555; font-weight: 600; }
+.chip-stats { display: flex; gap: 6px; align-items: center; }
+.chip-sep { color: #ddd; }
+.chip-no-data { color: #ccc; }
+.perf-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.perf-table th { text-align: left; color: #888; font-weight: 600; font-size: 12px; padding: 6px 8px; border-bottom: 1px solid #f0f0f0; }
+.perf-table td { padding: 10px 8px; border-bottom: 1px solid #f8f8f8; color: #333; }
+.perf-table tr:last-child td { border-bottom: none; }
+.profit { color: #dc2626; font-weight: 600; }
+.loss   { color: #1d4ed8; font-weight: 600; }
 
-/* ── 스와이프 (모바일만) ── */
-.swipe-container { display: none; overflow: hidden; position: relative; }
-.swipe-track { display: flex; width: 100%; }
-.swipe-card { flex: 0 0 100%; width: 100%; }
-.swipe-dots {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 16px;
+@media (max-width: 768px) {
+  .perf-section { padding: 16px; }
+  .perf-table thead { display: none; }
+  .perf-table tbody, .perf-table tr { display: block; }
+  .perf-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .perf-table tr:last-child { border-bottom: none; }
+  .perf-table td {
+    padding: 3px 4px;
+    border-bottom: none;
+    font-size: 13px;
+  }
+  .perf-table td:first-child {
+    grid-column: 1 / -1;
+    font-weight: 700;
+    font-size: 14px;
+    color: #1a1a2e;
+    padding-bottom: 6px;
+  }
+  .perf-table td::before {
+    display: block;
+    font-size: 11px;
+    color: #aaa;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .perf-table td:nth-child(2)::before { content: '거래수'; }
+  .perf-table td:nth-child(3)::before { content: '승률'; }
+  .perf-table td:nth-child(4)::before { content: '평균수익률'; }
+  .perf-table td:nth-child(5)::before { content: '총손익'; }
 }
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #e0e0e0;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.dot.active { background: #1a1a2e; }
 
-/* ── 데스크탑 그리드 ── */
+/* 전략 카드 그리드 (데스크탑) */
 .strategy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.desktop-only { display: grid; }
+.strategy-grid > .gate-card { grid-column: 1 / -1; }
+
+@media (max-width: 768px) {
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  .card { padding: 16px; }
+  /* 모바일: scroll-snap 스와이프 */
+  .strategy-grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 22px;
+    gap: 12px;
+    padding: 0 22px 8px 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    min-width: 0;
+  }
+  .strategy-grid::-webkit-scrollbar { display: none; }
+  .strategy-grid .card {
+    flex: 0 0 93%;
+    min-width: 0;
+    max-width: 93%;
+    overflow: hidden;
+    scroll-snap-align: start;
+  }
+}
 
 .card {
   background: #fff;
@@ -410,7 +369,6 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
   flex-direction: column;
   gap: 20px;
 }
-.gate-card { grid-column: 1 / -1; }
 
 .card-title {
   font-size: 18px;
@@ -456,13 +414,4 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .metric-row { margin-top: auto; padding-top: 16px; border-top: 1px solid #f0f0f0; }
 .metric .label { font-size: 13px; color: #888; margin-bottom: 4px; }
 .metric .value { font-size: 24px; font-weight: 700; color: #1a1a2e; }
-
-/* ── 모바일 ── */
-@media (max-width: 768px) {
-  h1 { font-size: 18px; margin-bottom: 4px; }
-  .swipe-container { display: block; }
-  .desktop-only { display: none; }
-  .card { padding: 16px; }
-  .card-title { font-size: 16px; }
-}
 </style>

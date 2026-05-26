@@ -24,7 +24,7 @@
     <div v-else class="section-list">
       <div v-for="entry in [...scans].reverse()" :key="entry.scanned_at" class="scan-entry">
         <button class="entry-header" @click="toggle(entry.scanned_at)">
-          <span>📅 {{ entry.scanned_at }} — {{ entry.results.length }}종목</span>
+          <span><span class="entry-icon">📅</span> {{ fmtDate(entry.scanned_at) }} — {{ entry.results.length }}종목</span>
           <span class="chevron">{{ open[entry.scanned_at] ? '▲' : '▼' }}</span>
         </button>
         <div v-if="open[entry.scanned_at]" class="entry-body">
@@ -57,6 +57,11 @@ import { fetchScans, fetchPending } from '../api.js'
 const scans = ref([])
 const pending = ref({})
 const open = ref({})
+
+function fmtDate(ts) {
+  if (!ts) return '-'
+  return ts.slice(0, 10) + ' ' + ts.slice(11, 16)
+}
 
 function toggle(key) {
   open.value[key] = !open.value[key]
@@ -109,6 +114,7 @@ h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
 }
 .entry-header:hover { background: #f9f9fb; }
 .chevron { color: #aaa; font-size: 12px; }
+.entry-icon { margin-right: 6px; }
 
 .entry-body { padding: 0 20px 16px; }
 
