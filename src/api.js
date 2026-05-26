@@ -68,6 +68,29 @@ export async function fetchPending() {
   return data?.data ?? {}
 }
 
+export async function fetchStrategyStats() {
+  const { data, error } = await supabase
+    .from('trades')
+    .select('strategy, action, pnl, pnl_pct')
+    .eq('action', 'sell')
+  if (error) throw error
+
+  const strategies = ['ma_cross', 'breakout_52w', 'bb_reversal', 'rsi_reversal']
+  const result = {}
+  strategies.forEach(s => { result[s] = { trades: 0, wins: 0, totalPnl: 0, totalPnlPct: 0 } })
+
+  data.forEach(t => {
+    const key = t.strategy
+    if (!result[key]) return
+    result[key].trades++
+    if ((t.pnl ?? 0) > 0) result[key].wins++
+    result[key].totalPnl += t.pnl ?? 0
+    result[key].totalPnlPct += t.pnl_pct ?? 0
+  })
+
+  return result
+}
+
 export async function fetchConfig() {
   const { data, error } = await supabase
     .from('config')
