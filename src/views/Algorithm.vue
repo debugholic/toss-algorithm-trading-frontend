@@ -51,6 +51,7 @@
       </div>
 
       <!-- 전략 카드: 듀얼 모멘텀 포함 (데스크탑 2열 / 모바일 스와이프) -->
+      <div class="carousel-wrap">
       <div class="strategy-grid" ref="gridRef">
 
         <!-- 듀얼 모멘텀 게이트 (데스크탑: full-width, 모바일: 첫 번째 카드) -->
@@ -171,6 +172,7 @@
         </div>
 
       </div>
+      </div><!-- /.carousel-wrap -->
     </div>
   </div>
 </template>
@@ -203,31 +205,49 @@ function setupInfiniteCarousel() {
   grid.insertBefore(lastClone, realCards[0])
   grid.appendChild(firstClone)
 
-  // 레이아웃 완전히 끝난 뒤 offsetWidth 읽기 (rAF 2회)
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    const gap  = 8
-    const SPL  = 18
+    const GAP  = 8
+    const PEEK = 10
     const cardW = grid.children[1].offsetWidth
-    const step  = cardW + gap
+    const step  = cardW + GAP
 
-    // 초기 위치: card1이 스냅 위치에, lastClone이 10px 왼쪽에 보임
-    grid.style.scrollSnapType = 'none'
-    grid.scrollLeft = step - SPL
-    requestAnimationFrame(() => { grid.style.scrollSnapType = '' })
+    let current = 1  // cloned 배열 기준 index (0=lastClone, 1=card1, ...)
 
-    // 실제 클론 스냅 위치 기준으로 루프 감지
-    const lastCloneSnap  = 0
-    const firstCloneSnap = (N + 1) * step - SPL
+    function setPos(idx, animate) {
+      grid.style.transition = animate ? 'transform 0.32s ease' : 'none'
+      grid.style.transform  = `translateX(${-(idx * step) + PEEK}px)`
+    }
 
-    // scrollend: 스냅 완료 후 조용히 실제 카드 위치로 이동
-    grid.addEventListener('scrollend', () => {
-      const sl = Math.round(grid.scrollLeft)
-      if (sl <= lastCloneSnap + 1) {
-        grid.scrollLeft = N * step - SPL       // lastClone → 실제 마지막 카드
-      } else if (sl >= firstCloneSnap - 1) {
-        grid.scrollLeft = step - SPL           // firstClone → 실제 첫 카드
+    setPos(current, false)
+
+    // transitionend: 클론 위치에서 실제 카드로 순간이동 (애니메이션 없이)
+    grid.addEventListener('transitionend', () => {
+      if (current === 0) {
+        current = N
+        setPos(current, false)
+      } else if (current === N + 1) {
+        current = 1
+        setPos(current, false)
       }
     })
+
+    // 터치 스와이프
+    const wrap = grid.parentElement
+    let startX = 0
+    let startTime = 0
+
+    wrap.addEventListener('touchstart', e => {
+      startX    = e.touches[0].clientX
+      startTime = Date.now()
+    }, { passive: true })
+
+    wrap.addEventListener('touchend', e => {
+      const dx  = e.changedTouches[0].clientX - startX
+      const vel = Math.abs(dx) / (Date.now() - startTime)
+      if (dx < -30 || vel > 0.4 && dx < 0) current++
+      else if (dx > 30 || vel > 0.4 && dx > 0) current--
+      setPos(current, true)
+    }, { passive: true })
   }))
 }
 
@@ -337,25 +357,21 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 @media (max-width: 768px) {
   h1 { font-size: 18px; margin-bottom: 4px; }
   .card { padding: 16px; }
-  /* 모바일: scroll-snap 스와이프 */
+  /* 모바일: transform 기반 캐러셀 */
+  .carousel-wrap {
+    overflow: hidden;
+    touch-action: pan-y;
+  }
   .strategy-grid {
     display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scroll-padding-left: 18px;
     gap: 8px;
-    padding: 0 10px 8px 0;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    min-width: 0;
+    will-change: transform;
   }
-  .strategy-grid::-webkit-scrollbar { display: none; }
   .strategy-grid .card {
-    flex: 0 0 calc(100% - 28px);
+    flex: 0 0 calc(100% - 20px);
     min-width: 0;
-    max-width: calc(100% - 28px);
+    max-width: calc(100% - 20px);
     overflow: hidden;
-    scroll-snap-align: start;
   }
 }
 
