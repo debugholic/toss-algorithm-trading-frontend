@@ -104,7 +104,7 @@ body {
   }
   .sidebar a.router-link-active { color: #2563eb; background: none !important; }
   .sidebar a:hover { background: none !important; color: #2563eb; }
-  .nav-icon { display: block; font-size: 22px; line-height: 1; }
+  .nav-icon { display: block; font-size: 22px; line-height: 1; margin-right: 0; }
   .nav-label { display: block; font-size: 11px; }
   .content {
     margin-left: 0;
