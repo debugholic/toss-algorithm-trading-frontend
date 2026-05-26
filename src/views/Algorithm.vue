@@ -207,7 +207,7 @@ function setupInfiniteCarousel() {
 
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const GAP  = 8
-    const PEEK = 10
+    const PEEK = 16
     const cardW = grid.children[1].offsetWidth
     const step  = cardW + GAP
 
@@ -368,9 +368,9 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
     will-change: transform;
   }
   .strategy-grid .card {
-    flex: 0 0 calc(100% - 20px);
+    flex: 0 0 calc(100% - 32px);
     min-width: 0;
-    max-width: calc(100% - 20px);
+    max-width: calc(100% - 32px);
     overflow: hidden;
   }
 }
