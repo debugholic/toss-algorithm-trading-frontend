@@ -145,9 +145,6 @@ const remainingCount = computed(() => sortedScans.value.length - visibleCount.va
 
 onMounted(async () => {
   [scans.value, pending.value] = await Promise.all([fetchScans(), fetchPending()])
-  if (scans.value.length) {
-    open.value[scans.value[scans.value.length - 1].scanned_at] = true
-  }
 })
 </script>
 
