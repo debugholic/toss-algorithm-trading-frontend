@@ -1,7 +1,10 @@
 <template>
   <div>
     <h1>🔍 스캔 이력</h1>
-    <p class="caption">매일 15:35 자동 스캔 · ADX 기준 전략 자동 선택</p>
+    <p class="caption">
+      <span v-if="market === 'KR'">매일 15:35 KST 자동 스캔 · ADX 기준 전략 자동 선택</span>
+      <span v-else>매일 06:05 KST 자동 스캔 · ADX 기준 전략 자동 선택</span>
+    </p>
 
     <div class="tabs">
       <button :class="['tab', { active: market === 'KR' }]" @click="market = 'KR'">
@@ -36,7 +39,9 @@
       </table>
     </div>
 
-    <div v-if="!visibleScans.length" class="empty">스캔 이력 없음. 매일 15:35 자동 실행됩니다.</div>
+    <div v-if="!visibleScans.length" class="empty">
+      스캔 이력 없음. 매일 {{ market === 'KR' ? '15:35' : '06:05' }} KST 자동 실행됩니다.
+    </div>
     <div v-else class="section-list">
       <div v-for="entry in visibleScans" :key="entry.scanned_at" class="scan-entry">
         <button class="entry-header" @click="toggle(entry.scanned_at)">
