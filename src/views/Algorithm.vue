@@ -15,42 +15,28 @@
             현재 {{ versionPerf[versionPerf.length - 1].version }}
           </span>
         </div>
-        <div class="version-cards">
-          <div
-            v-for="v in versionPerf" :key="v.version"
-            :class="['version-card', { current: v.version === versionPerf[versionPerf.length - 1]?.version }]"
-          >
-            <div class="vc-top">
-              <span class="vc-ver">{{ v.version }}</span>
-              <span class="vc-name">{{ v.name }}</span>
-              <span class="vc-since">{{ v.since }}~</span>
+        <div class="ver-cols">
+          <div v-for="v in versionPerf" :key="v.version" class="ver-col">
+            <div class="ver-top">
+              <span :class="['ver-badge', { active: v.version === versionPerf[versionPerf.length - 1]?.version }]">{{ v.version }}</span>
+              <span class="ver-name">{{ v.name }}</span>
             </div>
-            <div v-if="v.sell_count === 0" class="vc-pending">집계 중</div>
-            <div v-else class="vc-stats">
-              <div class="vc-stat">
-                <span class="vc-label">청산</span>
-                <span class="vc-value">{{ v.sell_count }}건</span>
+            <div v-if="v.sell_count === 0" class="ver-empty">집계 중</div>
+            <template v-else>
+              <div class="ver-bar-wrap">
+                <div class="ver-bar-track">
+                  <div class="ver-bar-fill" :class="pnlClass((v.win_rate ?? 0) - 50)" :style="{ width: (v.win_rate ?? 0) + '%' }"></div>
+                </div>
+                <span class="ver-bar-label" :class="pnlClass((v.win_rate ?? 0) - 50)">{{ v.win_rate }}%</span>
               </div>
-              <div class="vc-stat">
-                <span class="vc-label">승률</span>
-                <span class="vc-value" :class="pnlClass((v.win_rate ?? 0) - 50)">{{ v.win_rate }}%</span>
+              <div class="ver-sub">
+                청산 {{ v.sell_count }}건 ·
+                평균 <span :class="pnlClass(v.avg_pnl_pct)">{{ v.avg_pnl_pct != null ? (v.avg_pnl_pct > 0 ? '+' : '') + v.avg_pnl_pct + '%' : '-' }}</span> ·
+                <span :class="pnlClass(v.total_pnl)">{{ formatPnl(v.total_pnl) }}원</span>
               </div>
-              <div class="vc-stat">
-                <span class="vc-label">평균수익</span>
-                <span class="vc-value" :class="pnlClass(v.avg_pnl_pct)">
-                  {{ v.avg_pnl_pct != null ? (v.avg_pnl_pct > 0 ? '+' : '') + v.avg_pnl_pct + '%' : '-' }}
-                </span>
-              </div>
-              <div class="vc-stat">
-                <span class="vc-label">총손익</span>
-                <span class="vc-value" :class="pnlClass(v.total_pnl)">{{ formatPnl(v.total_pnl) }}원</span>
-              </div>
-            </div>
+            </template>
           </div>
         </div>
-        <p v-if="versionPerf.length > 1" class="version-note">
-          v2 거래가 2~3주 쌓이면 v1 대비 성과를 수치로 비교할 수 있습니다.
-        </p>
       </div>
 
       <!-- 전략별 성과: 접기/펼치기 -->
@@ -345,34 +331,28 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .strategy-layout { display: flex; flex-direction: column; gap: 20px; overflow-x: hidden; }
 
 /* 버전 비교 */
-.version-section { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-.version-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.current-tag { font-size: 12px; font-weight: 700; background: #1a1a2e; color: #fff; border-radius: 20px; padding: 3px 10px; }
-.version-cards { display: flex; gap: 12px; }
-.version-card {
-  flex: 1;
-  border: 1.5px solid #eee;
-  border-radius: 10px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.version-card.current { border-color: #1a1a2e; }
-.vc-top { display: flex; flex-direction: column; gap: 3px; }
-.vc-ver { font-size: 18px; font-weight: 800; color: #1a1a2e; }
-.vc-name { font-size: 12px; font-weight: 600; color: #555; }
-.vc-since { font-size: 11px; color: #aaa; }
-.vc-pending { font-size: 13px; color: #aaa; font-style: italic; }
-.vc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.vc-stat { display: flex; flex-direction: column; gap: 2px; }
-.vc-label { font-size: 11px; color: #aaa; font-weight: 600; }
-.vc-value { font-size: 14px; font-weight: 700; color: #1a1a2e; }
-.version-note { font-size: 12px; color: #aaa; margin-top: 12px; margin-bottom: 0; }
+.version-section { background: #fff; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.version-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.current-tag { font-size: 11px; font-weight: 700; background: #1a1a2e; color: #fff; border-radius: 20px; padding: 2px 9px; }
+.ver-cols { display: flex; gap: 12px; }
+.ver-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.ver-top { display: flex; align-items: center; gap: 6px; }
+.ver-badge { font-size: 11px; font-weight: 800; color: #aaa; background: #f0f0f0; border-radius: 4px; padding: 1px 6px; flex-shrink: 0; }
+.ver-badge.active { background: #1a1a2e; color: #fff; }
+.ver-name { font-size: 12px; font-weight: 600; color: #555; }
+.ver-empty { font-size: 12px; color: #bbb; padding: 4px 0; }
+.ver-bar-wrap { display: flex; align-items: center; gap: 6px; }
+.ver-bar-track { flex: 1; height: 6px; background: #f0f0f0; border-radius: 99px; overflow: hidden; }
+.ver-bar-fill { height: 100%; border-radius: 99px; background: #aaa; transition: width .4s ease; }
+.ver-bar-fill.profit { background: #dc2626; }
+.ver-bar-fill.loss   { background: #1d4ed8; }
+.ver-bar-label { font-size: 12px; font-weight: 700; min-width: 38px; text-align: right; }
+.ver-sub { font-size: 11px; color: #888; }
 
 @media (max-width: 768px) {
-  .version-section { padding: 16px; }
-  .version-cards { flex-direction: column; }
+  .version-section { padding: 14px 16px; }
+  .ver-cols { flex-direction: column; gap: 10px; }
+  .ver-col:not(:last-child) { padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
 }
 
 /* 성과 테이블 */
