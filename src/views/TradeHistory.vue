@@ -22,25 +22,34 @@
             :class="{
               'other-month': cell.other,
               'has-trade': !cell.other && byDate[dateStr(cell.day)],
+              'is-holiday': !cell.other && holidays[dateStr(cell.day)],
               selected: !cell.other && dateStr(cell.day) === selectedDate,
             }"
             @click="!cell.other && byDate[dateStr(cell.day)] && (selectedDate = dateStr(cell.day))"
           >
             <span class="day-num">{{ cell.day }}</span>
+            <span v-if="!cell.other && holidays[dateStr(cell.day)]" class="day-holiday" :title="holidays[dateStr(cell.day)]">
+              {{ shortHoliday(holidays[dateStr(cell.day)]) }}
+            </span>
             <span
               v-if="!cell.other && byDate[dateStr(cell.day)]"
               class="day-pnl"
               :class="byDate[dateStr(cell.day)].pnl >= 0 ? 'pos' : 'neg'"
             >
-              {{ byDate[dateStr(cell.day)].pnl >= 0 ? '+' : '' }}{{ fmt(byDate[dateStr(cell.day)].pnl) }}
+              {{ fmtCal(byDate[dateStr(cell.day)].pnl) }}
             </span>
           </div>
         </div>
       </div>
 
       <!-- 날짜 상세 -->
-      <div v-if="selectedDate && byDate[selectedDate]" class="section">
-        <h2>{{ selectedDate }} 매매 내역</h2>
+      <div v-if="selectedDate && byDate[selectedDate]" class="section detail-section">
+        <div class="day-summary">
+          <span class="day-summary-title">{{ selectedDate }} 매매 내역</span>
+          <span class="day-summary-pnl" :class="byDate[selectedDate].pnl >= 0 ? 'pos' : 'neg'">
+            {{ (byDate[selectedDate].pnl >= 0 ? '+' : '') + fmt(byDate[selectedDate].pnl) }}원
+          </span>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -79,6 +88,40 @@ import { fetchTrades } from '../api.js'
 const trades = ref([])
 const selectedMonth = ref(new Date().toISOString().slice(0, 7))
 const selectedDate = ref('')
+const holidays = ref({})   // { 'YYYY-MM-DD': '공휴일명' }
+const fetchedYears = new Set()
+
+
+function fmtCal(n) {
+  if (n == null) return ''
+  const sign = n >= 0 ? '+' : '-'
+  const abs = Math.abs(Math.round(n))
+  if (abs >= 10000) return sign + Math.round(abs / 10000) + '만'
+  return sign + abs.toLocaleString()
+}
+
+function shortHoliday(name) {
+  // 긴 이름은 공백 기준으로 2줄로 나눔
+  const BREAK = {
+    '부처님 오신 날': '부처님\n오신 날',
+    '설날 연휴': '설날\n연휴',
+    '추석 연휴': '추석\n연휴',
+    '대체 공휴일': '대체\n공휴일',
+    '대체공휴일': '대체\n공휴일',
+  }
+  return BREAK[name] ?? name
+}
+
+async function loadHolidays(year) {
+  if (fetchedYears.has(year)) return
+  fetchedYears.add(year)
+  try {
+    const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/KR`)
+    if (!res.ok) return
+    const data = await res.json()
+    data.forEach(h => { holidays.value[h.date] = h.localName })
+  } catch {}
+}
 
 const fmt = n => {
   const rounded = Math.round(n)
@@ -132,6 +175,7 @@ function moveMonth(delta) {
   const d = new Date(y, m - 1 + delta, 1)
   selectedMonth.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   selectedDate.value = ''
+  loadHolidays(d.getFullYear())
 }
 
 function dateStr(day) {
@@ -141,12 +185,26 @@ function dateStr(day) {
 
 watch(months, v => { if (v.length && !trades.value.some(t => t.date.startsWith(selectedMonth.value))) selectedMonth.value = v[0] })
 
-onMounted(async () => { trades.value = await fetchTrades().catch(() => []) })
+onMounted(async () => {
+  trades.value = await fetchTrades().catch(() => [])
+  loadHolidays(new Date().getFullYear())
+})
 </script>
 
 <style scoped>
 h1 { font-size: 22px; font-weight: 700; margin-bottom: 24px; }
 h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+
+.section.detail-section { padding: 0; overflow: hidden; }
+
+.day-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+}
+.day-summary-title { font-size: 14px; font-weight: 600; color: #1a1a2e; }
+.day-summary-pnl { font-size: 20px; font-weight: 700; }
 
 .section {
   background: #fff;
@@ -203,13 +261,14 @@ h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
 }
 
 .day-cell {
-  min-height: 56px;
+  min-height: 68px;
   border-radius: 8px;
-  padding: 6px;
+  padding: 8px 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   font-size: 13px;
   color: #555;
   background: #f9f9fb;
@@ -220,22 +279,25 @@ h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
 .day-cell.other-month { background: transparent; }
 .day-cell.other-month .day-num { color: #ccc; }
 
-.day-num { font-weight: 600; font-size: 14px; }
-.day-pnl { font-size: 11px; margin-top: 2px; }
+.day-num { font-weight: 600; font-size: 13px; }
+.day-holiday { font-size: 8px; color: #e74c3c; line-height: 1.3; text-align: center; white-space: nowrap; overflow: hidden; width: 100%; }
+.is-holiday .day-num { color: #e74c3c; }
+.day-pnl { font-size: 10px; margin-top: 1px; }
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
-th { text-align: left; padding: 8px 10px; border-bottom: 2px solid #eee; color: #555; font-weight: 600; white-space: nowrap; overflow: hidden; }
-td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+th { text-align: left; padding: 8px 20px; border-bottom: 2px solid #eee; color: #555; font-weight: 600; white-space: nowrap; overflow: hidden; }
+td { padding: 8px 20px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .td-date { font-size: 12px; letter-spacing: -0.3px; }
 th:nth-child(1) { width: 16%; } /* 일시 */
 th:nth-child(2) { width: 6%; }  /* 마켓 */
 th:nth-child(3) { width: 6%; }  /* 구분 */
 th:nth-child(4) { width: 15%; } /* 종목명 */
-th:nth-child(5) { width: 6%; }  /* 수량 */
-th:nth-child(6) { width: 13%; } /* 단가 */
-th:nth-child(7) { width: 13%; } /* 금액 */
-th:nth-child(8) { width: 12%; } /* 손익 */
-th:nth-child(9) { width: 13%; } /* 수익률 */
+th:nth-child(5) { width: 6%;  text-align: right; } /* 수량 */
+th:nth-child(6) { width: 13%; text-align: right; } /* 단가 */
+th:nth-child(7) { width: 13%; text-align: right; } /* 금액 */
+th:nth-child(8) { width: 12%; text-align: right; } /* 손익 */
+th:nth-child(9) { width: 13%; text-align: right; } /* 수익률 */
+td:nth-child(5), td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9) { text-align: right; }
 tr:last-child td { border-bottom: none; }
 
 .pos { color: #e74c3c; }
@@ -247,18 +309,24 @@ tr:last-child td { border-bottom: none; }
 @media (max-width: 768px) {
   h1 { font-size: 18px; margin-bottom: 16px; }
   .section { padding: 14px; }
+  .section.detail-section { padding: 0; }
+  .day-summary { padding: 14px 16px; }
+  .day-summary-title { font-size: 13px; }
+  .day-summary-pnl { font-size: 18px; }
+  .day-holiday { white-space: pre-line; }
   .day-cell { min-height: 42px; padding: 4px 2px; overflow: hidden; }
-  .day-num { font-size: 12px; }
-  .day-pnl { font-size: 10px; white-space: nowrap; }
+  .day-num { font-size: 11px; }
+  .day-pnl { font-size: 9px; white-space: nowrap; }
 
   .table-wrap table, .table-wrap thead, .table-wrap tbody, .table-wrap tr { display: block; }
   .table-wrap thead { display: none; }
   .table-wrap tr {
     background: #f9f9fb;
     border-radius: 10px;
-    margin-bottom: 10px;
+    margin: 0 12px 14px;
     border: 1px solid #eee;
   }
+  .detail-section .table-wrap { padding: 4px 0 16px; }
   .table-wrap td {
     display: flex;
     justify-content: space-between;
