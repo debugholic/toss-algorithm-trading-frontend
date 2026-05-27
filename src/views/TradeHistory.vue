@@ -12,7 +12,7 @@
           </div>
         </div>
         <div class="day-names">
-          <span v-for="d in ['월','화','수','목','금','토','일']" :key="d">{{ d }}</span>
+          <span v-for="(d, i) in ['일','월','화','수','목','금','토']" :key="d" :class="{ sunday: i === 0, saturday: i === 6 }">{{ d }}</span>
         </div>
         <div v-for="(week, wi) in calendarWeeks" :key="wi" class="week">
           <div
@@ -109,7 +109,7 @@ const byDate = computed(() => {
 const calendarWeeks = computed(() => {
   if (!selectedMonth.value) return []
   const [y, m] = selectedMonth.value.split('-').map(Number)
-  const firstDow = (new Date(y, m - 1, 1).getDay() + 6) % 7
+  const firstDow = new Date(y, m - 1, 1).getDay() // 0=일, 1=월, ..., 6=토
   const lastDay = new Date(y, m, 0).getDate()
   const prevLastDay = new Date(y, m - 1, 0).getDate()
 
@@ -192,6 +192,8 @@ h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
   color: #888;
   padding: 4px 0;
 }
+.day-names .sunday { color: #e74c3c; }
+.day-names .saturday { color: #2563eb; }
 
 .week {
   display: grid;
