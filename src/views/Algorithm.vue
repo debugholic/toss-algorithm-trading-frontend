@@ -7,6 +7,52 @@
 
     <div v-if="cfg" class="strategy-layout">
 
+      <!-- 전략 버전 비교 -->
+      <div class="version-section">
+        <div class="version-header">
+          <div class="section-title">전략 버전 비교</div>
+          <span v-if="versionPerf.length" class="current-tag">
+            현재 {{ versionPerf[versionPerf.length - 1].version }}
+          </span>
+        </div>
+        <div class="version-cards">
+          <div
+            v-for="v in versionPerf" :key="v.version"
+            :class="['version-card', { current: v.version === versionPerf[versionPerf.length - 1]?.version }]"
+          >
+            <div class="vc-top">
+              <span class="vc-ver">{{ v.version }}</span>
+              <span class="vc-name">{{ v.name }}</span>
+              <span class="vc-since">{{ v.since }}~</span>
+            </div>
+            <div v-if="v.sell_count === 0" class="vc-pending">집계 중</div>
+            <div v-else class="vc-stats">
+              <div class="vc-stat">
+                <span class="vc-label">청산</span>
+                <span class="vc-value">{{ v.sell_count }}건</span>
+              </div>
+              <div class="vc-stat">
+                <span class="vc-label">승률</span>
+                <span class="vc-value" :class="pnlClass((v.win_rate ?? 0) - 50)">{{ v.win_rate }}%</span>
+              </div>
+              <div class="vc-stat">
+                <span class="vc-label">평균수익</span>
+                <span class="vc-value" :class="pnlClass(v.avg_pnl_pct)">
+                  {{ v.avg_pnl_pct != null ? (v.avg_pnl_pct > 0 ? '+' : '') + v.avg_pnl_pct + '%' : '-' }}
+                </span>
+              </div>
+              <div class="vc-stat">
+                <span class="vc-label">총손익</span>
+                <span class="vc-value" :class="pnlClass(v.total_pnl)">{{ formatPnl(v.total_pnl) }}원</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p v-if="versionPerf.length > 1" class="version-note">
+          v2 거래가 2~3주 쌓이면 v1 대비 성과를 수치로 비교할 수 있습니다.
+        </p>
+      </div>
+
       <!-- 전략별 성과: 접기/펼치기 -->
       <div class="perf-section">
         <div class="perf-header" @click="perfOpen = !perfOpen">
@@ -179,7 +225,7 @@
 
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
-import { fetchConfig, fetchScans, fetchStrategyStats } from '../api.js'
+import { fetchConfig, fetchScans, fetchStrategyStats, fetchVersionPerformance } from '../api.js'
 
 const STRATEGY_LABELS = {
   ma_cross:     'MA 크로스',
@@ -251,6 +297,7 @@ function setupInfiniteCarousel() {
   }))
 }
 
+const versionPerf  = ref([])
 const maCnt        = ref(0)
 const rsiCnt       = ref(0)
 const bbCnt        = ref(0)
@@ -269,9 +316,12 @@ function formatPnl(val) {
 }
 
 onMounted(async () => {
-  const [config, scans, stats] = await Promise.all([fetchConfig(), fetchScans(), fetchStrategyStats()])
+  const [config, scans, stats, verPerf] = await Promise.all([
+    fetchConfig(), fetchScans(), fetchStrategyStats(), fetchVersionPerformance().catch(() => [])
+  ])
   cfg.value = config
   strategyStats.value = stats
+  versionPerf.value = verPerf
 
   if (scans.length) {
     const last = scans[scans.length - 1]
@@ -293,6 +343,37 @@ onMounted(async () => {
 h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .caption { color: #888; font-size: 13px; margin-bottom: 24px; }
 .strategy-layout { display: flex; flex-direction: column; gap: 20px; overflow-x: hidden; }
+
+/* 버전 비교 */
+.version-section { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.version-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.current-tag { font-size: 12px; font-weight: 700; background: #1a1a2e; color: #fff; border-radius: 20px; padding: 3px 10px; }
+.version-cards { display: flex; gap: 12px; }
+.version-card {
+  flex: 1;
+  border: 1.5px solid #eee;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.version-card.current { border-color: #1a1a2e; }
+.vc-top { display: flex; flex-direction: column; gap: 3px; }
+.vc-ver { font-size: 18px; font-weight: 800; color: #1a1a2e; }
+.vc-name { font-size: 12px; font-weight: 600; color: #555; }
+.vc-since { font-size: 11px; color: #aaa; }
+.vc-pending { font-size: 13px; color: #aaa; font-style: italic; }
+.vc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.vc-stat { display: flex; flex-direction: column; gap: 2px; }
+.vc-label { font-size: 11px; color: #aaa; font-weight: 600; }
+.vc-value { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+.version-note { font-size: 12px; color: #aaa; margin-top: 12px; margin-bottom: 0; }
+
+@media (max-width: 768px) {
+  .version-section { padding: 16px; }
+  .version-cards { flex-direction: column; }
+}
 
 /* 성과 테이블 */
 .perf-section { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
