@@ -64,7 +64,7 @@ export async function fetchScans() {
     .from('scan_history')
     .select('*')
     .order('scanned_at', { ascending: false })
-    .limit(20)
+    .limit(14)
   if (error) throw error
   return data
 }
