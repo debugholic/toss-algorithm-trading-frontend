@@ -146,6 +146,57 @@ export async function fetchStrategyStats() {
   })
 }
 
+// config.py STRATEGY_CHANGELOG 와 동기화
+const VERSION_FALLBACK = [
+  { version: 'v1', name: 'MA 크로스·RSI 역발산',      since: '2026-01-01' },
+  { version: 'v2', name: '눌림목·조정구간 혼합전략',   since: '2026-05-27' },
+]
+
+export async function fetchVersionPerformance() {
+  // 버전 메타데이터 — 테이블 없으면 폴백
+  let versions = VERSION_FALLBACK
+  const { data: vData, error: vErr } = await supabase
+    .from('strategy_versions')
+    .select('*')
+    .order('version', { ascending: true })
+  if (!vErr && vData?.length) versions = vData
+
+  // 거래 데이터 (strategy_version 컬럼 포함)
+  const { data: trades, error: tErr } = await supabase
+    .from('trades')
+    .select('strategy_version, action, pnl, pnl_pct')
+  if (tErr) throw tErr
+
+  // 버전별 집계
+  const map = {}
+  trades.forEach(t => {
+    const v = t.strategy_version || 'v1'
+    if (!map[v]) map[v] = { buys: 0, closed: 0, wins: 0, pnlSum: 0, pnlPctSum: 0 }
+    if (t.action === 'buy') map[v].buys++
+    if ((t.action === 'sell' || t.action === 'stop') && t.pnl != null) {
+      map[v].closed++
+      if ((t.pnl ?? 0) > 0) map[v].wins++
+      map[v].pnlSum += t.pnl ?? 0
+      map[v].pnlPctSum += t.pnl_pct ?? 0
+    }
+  })
+
+  return versions.map(v => {
+    const m = map[v.version] ?? { buys: 0, closed: 0, wins: 0, pnlSum: 0, pnlPctSum: 0 }
+    return {
+      version:     v.version,
+      name:        v.name,
+      since:       v.since,
+      description: v.description,
+      buy_count:   m.buys,
+      sell_count:  m.closed,
+      win_rate:    m.closed > 0 ? Math.round(m.wins / m.closed * 1000) / 10 : null,
+      total_pnl:   Math.round(m.pnlSum),
+      avg_pnl_pct: m.closed > 0 ? Math.round(m.pnlPctSum / m.closed * 100) / 100 : null,
+    }
+  })
+}
+
 export async function fetchConfig() {
   const { data, error } = await supabase
     .from('config')

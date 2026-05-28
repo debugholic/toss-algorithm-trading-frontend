@@ -249,6 +249,8 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { text-align: left; padding: 8px 10px; border-bottom: 2px solid #eee; color: #555; font-weight: 600; white-space: nowrap; }
 td { padding: 10px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
 tr:last-child td { border-bottom: none; }
+th:nth-child(2), th:nth-child(3), th:nth-child(4) { text-align: right; }
+td:nth-child(2), td:nth-child(3), td:nth-child(4) { text-align: right; }
 
 .pos { color: #e74c3c; }
 .neg { color: #2563eb; }

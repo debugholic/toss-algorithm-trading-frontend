@@ -7,6 +7,38 @@
 
     <div v-if="cfg" class="strategy-layout">
 
+      <!-- 전략 버전 비교 -->
+      <div class="version-section">
+        <div class="version-header">
+          <div class="section-title">전략 버전 비교</div>
+          <span v-if="versionPerf.length" class="current-tag">
+            현재 {{ versionPerf[versionPerf.length - 1].version }}
+          </span>
+        </div>
+        <div class="ver-cols">
+          <div v-for="v in versionPerf" :key="v.version" class="ver-col">
+            <div class="ver-top">
+              <span :class="['ver-badge', { active: v.version === versionPerf[versionPerf.length - 1]?.version }]">{{ v.version }}</span>
+              <span class="ver-name">{{ v.name }}</span>
+            </div>
+            <div v-if="v.sell_count === 0" class="ver-empty">집계 중</div>
+            <template v-else>
+              <div class="ver-bar-wrap">
+                <div class="ver-bar-track">
+                  <div class="ver-bar-fill" :class="pnlClass((v.win_rate ?? 0) - 50)" :style="{ width: (v.win_rate ?? 0) + '%' }"></div>
+                </div>
+                <span class="ver-bar-label" :class="pnlClass((v.win_rate ?? 0) - 50)">{{ v.win_rate }}%</span>
+              </div>
+              <div class="ver-sub">
+                청산 {{ v.sell_count }}건 ·
+                평균 <span :class="pnlClass(v.avg_pnl_pct)">{{ v.avg_pnl_pct != null ? (v.avg_pnl_pct > 0 ? '+' : '') + v.avg_pnl_pct + '%' : '-' }}</span> ·
+                <span :class="pnlClass(v.total_pnl)">{{ formatPnl(v.total_pnl) }}원</span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
       <!-- 전략별 성과: 접기/펼치기 -->
       <div class="perf-section">
         <div class="perf-header" @click="perfOpen = !perfOpen">
@@ -179,7 +211,7 @@
 
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
-import { fetchConfig, fetchScans, fetchStrategyStats } from '../api.js'
+import { fetchConfig, fetchScans, fetchStrategyStats, fetchVersionPerformance } from '../api.js'
 
 const STRATEGY_LABELS = {
   ma_cross:     'MA 크로스',
@@ -251,6 +283,7 @@ function setupInfiniteCarousel() {
   }))
 }
 
+const versionPerf  = ref([])
 const maCnt        = ref(0)
 const rsiCnt       = ref(0)
 const bbCnt        = ref(0)
@@ -269,9 +302,12 @@ function formatPnl(val) {
 }
 
 onMounted(async () => {
-  const [config, scans, stats] = await Promise.all([fetchConfig(), fetchScans(), fetchStrategyStats()])
+  const [config, scans, stats, verPerf] = await Promise.all([
+    fetchConfig(), fetchScans(), fetchStrategyStats(), fetchVersionPerformance().catch(() => [])
+  ])
   cfg.value = config
   strategyStats.value = stats
+  versionPerf.value = verPerf
 
   if (scans.length) {
     const last = scans[0]
@@ -293,6 +329,31 @@ onMounted(async () => {
 h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .caption { color: #888; font-size: 13px; margin-bottom: 24px; }
 .strategy-layout { display: flex; flex-direction: column; gap: 20px; overflow-x: hidden; }
+
+/* 버전 비교 */
+.version-section { background: #fff; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.version-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.current-tag { font-size: 11px; font-weight: 700; background: #1a1a2e; color: #fff; border-radius: 20px; padding: 2px 9px; }
+.ver-cols { display: flex; gap: 12px; }
+.ver-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.ver-top { display: flex; align-items: center; gap: 6px; }
+.ver-badge { font-size: 11px; font-weight: 800; color: #aaa; background: #f0f0f0; border-radius: 4px; padding: 1px 6px; flex-shrink: 0; }
+.ver-badge.active { background: #1a1a2e; color: #fff; }
+.ver-name { font-size: 12px; font-weight: 600; color: #555; }
+.ver-empty { font-size: 12px; color: #bbb; padding: 4px 0; }
+.ver-bar-wrap { display: flex; align-items: center; gap: 6px; }
+.ver-bar-track { flex: 1; height: 6px; background: #f0f0f0; border-radius: 99px; overflow: hidden; }
+.ver-bar-fill { height: 100%; border-radius: 99px; background: #aaa; transition: width .4s ease; }
+.ver-bar-fill.profit { background: #dc2626; }
+.ver-bar-fill.loss   { background: #1d4ed8; }
+.ver-bar-label { font-size: 12px; font-weight: 700; min-width: 38px; text-align: right; }
+.ver-sub { font-size: 11px; color: #888; }
+
+@media (max-width: 768px) {
+  .version-section { padding: 14px 16px; }
+  .ver-cols { flex-direction: column; gap: 10px; }
+  .ver-col:not(:last-child) { padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+}
 
 /* 성과 테이블 */
 .perf-section { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
