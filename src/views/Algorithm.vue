@@ -300,6 +300,24 @@
           </div>
         </div>
 
+        <!-- Chronos 최종 검증 -->
+        <div class="card gate-card chronos-card">
+          <div class="card-title">🤖 Chronos AI 검증 <span class="badge chronos">최종 필터</span></div>
+          <div class="block">
+            <div class="block-title">왜 이 필터?</div>
+            <p>위 전략들이 발굴한 종목에 한해 Amazon Chronos-mini(사전학습 시계열 AI)로 5거래일 수익률 분포를 계산합니다. 추세·패턴 기반 전략의 판단을 확률적으로 한 번 더 검증해, 기대수익은 있되 하방 리스크가 제한된 종목만 최종 매수 대기열에 올립니다.</p>
+          </div>
+          <div class="block">
+            <div class="block-title">통과 조건 (균형)</div>
+            <div class="flow">
+              <div class="flow-item"><span class="tag buy">조건1</span> 5일 수익률 중앙값(median) &gt; +1% — 기대 수익 존재</div>
+              <div class="flow-item"><span class="tag trail">조건2</span> 5일 수익률 하위 10%(p10) &gt; -5% — 하방 리스크 제한</div>
+              <div class="flow-item"><span class="tag sell">제외</span> 두 조건 중 하나라도 미충족 시 매수 대기열에서 제외</div>
+              <div class="flow-item"><span class="tag loss">장애</span> AI 서버 응답 없을 시 전략 판단 그대로 통과 (안전 폴백)</div>
+            </div>
+          </div>
+        </div>
+
       </div>
       </div><!-- /.carousel-wrap -->
     </div>
@@ -579,6 +597,7 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .badge.sideways { background: #ede9fe; color: #7c3aed; }
 .badge.pullback { background: #ffedd5; color: #ea580c; }
 .badge.pending  { background: #f3f4f6; color: #6b7280; }
+.badge.chronos  { background: #f0fdf4; color: #16a34a; }
 
 .block {}
 .block-title { font-size: 13px; font-weight: 700; color: #555; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }
@@ -602,6 +621,7 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .tag.loss  { background: #fef3c7; color: #d97706; }
 
 .metric-row { margin-top: auto; padding-top: 16px; border-top: 1px solid #f0f0f0; }
+.chronos-card { border: 1.5px solid #bbf7d0; background: #f0fdf4; }
 .metric .label { font-size: 13px; color: #888; margin-bottom: 4px; }
 .metric .value { font-size: 24px; font-weight: 700; color: #1a1a2e; }
 </style>
