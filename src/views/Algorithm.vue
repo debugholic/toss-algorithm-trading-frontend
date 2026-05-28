@@ -128,12 +128,12 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
-import { fetchConfig, fetchScans, fetchStrategyStats, fetchVersionPerformance, fetchStrategies } from '../api.js'
+import { fetchConfig, fetchScans, fetchStrategyStats, fetchVersionPerformance, fetchStrategies, fetchStrategyMeta } from '../api.js'
 
-// v1 레거시 전략명 (strategies 테이블에 없는 과거 ID)
-const LEGACY_LABELS = {
-  bb_reversal:  'BB 반등',
-  rsi_reversal: 'RSI 역발산',
+// strategies 테이블에 아예 없는 v1 완전 레거시 (bb_reversal·rsi_reversal)
+const PURE_LEGACY = {
+  bb_reversal:  { name: 'BB 반등',     version: 'v1' },
+  rsi_reversal: { name: 'RSI 역발산',  version: 'v1' },
 }
 
 const perfOpen = ref(false)
@@ -200,23 +200,23 @@ function setupInfiniteCarousel() {
 }
 
 const versionPerf   = ref([])
-const strategies    = ref([])    // Supabase strategies 테이블
+const strategies    = ref([])    // 카드 렌더링용 (active only)
+const strategyMeta  = ref([])    // 레이블·버전 맵용 (비활성 포함, type='strategy')
 const scanCounts    = ref({})    // { strategy_id: count }
 const lastScanDate  = ref('-')
 const strategyStats = ref([])
 
-// 성과 테이블용 레이블 맵 (strategies + legacy)
+// 성과 테이블용 레이블 맵 (DB 전체 + 완전 레거시)
 const strategyLabelMap = computed(() => {
-  const map = { ...LEGACY_LABELS }
-  strategies.value.forEach(s => { map[s.id] = s.name })
+  const map = Object.fromEntries(Object.entries(PURE_LEGACY).map(([k, v]) => [k, v.name]))
+  strategyMeta.value.forEach(s => { map[s.id] = s.name })
   return map
 })
 
-// 전략 버전 맵 (strategies + 레거시 v1 하드코딩)
-const LEGACY_VERSIONS = { bb_reversal: 'v1', rsi_reversal: 'v1', ma_cross: 'v1', breakout_52w: 'v1' }
+// 전략 버전 맵 (DB 전체 + 완전 레거시)
 const strategyVersionMap = computed(() => {
-  const map = { ...LEGACY_VERSIONS }
-  strategies.value.forEach(s => { map[s.id] = s.version ?? 'v1' })
+  const map = Object.fromEntries(Object.entries(PURE_LEGACY).map(([k, v]) => [k, v.version]))
+  strategyMeta.value.forEach(s => { map[s.id] = s.version ?? 'v1' })
   return map
 })
 
@@ -231,17 +231,19 @@ function formatPnl(val) {
 }
 
 onMounted(async () => {
-  const [config, scans, stats, verPerf, strats] = await Promise.all([
+  const [config, scans, stats, verPerf, strats, meta] = await Promise.all([
     fetchConfig(),
     fetchScans(),
     fetchStrategyStats(),
     fetchVersionPerformance().catch(() => []),
     fetchStrategies().catch(() => []),
+    fetchStrategyMeta().catch(() => []),
   ])
   cfg.value           = config
   strategyStats.value = stats
   versionPerf.value   = verPerf
   strategies.value    = strats
+  strategyMeta.value  = meta
 
   if (scans.length) {
     const last = scans[0]
@@ -419,7 +421,7 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .badge.sideways { background: #ede9fe; color: #7c3aed; }
 .badge.pullback { background: #ffedd5; color: #ea580c; }
 .badge.pending  { background: #f3f4f6; color: #6b7280; }
-.badge.chronos  { background: #f0fdf4; color: #16a34a; }
+.badge.chronos  { background: #a7f3d0; color: #065f46; }
 
 .block {}
 .block-title { font-size: 13px; font-weight: 700; color: #555; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }

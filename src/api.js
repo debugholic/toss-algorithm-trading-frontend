@@ -104,6 +104,7 @@ export async function fetchSnapshotHistory() {
   return result
 }
 
+// 카드 렌더링용 — active 전략만 (gate·filter 포함)
 export async function fetchStrategies() {
   const { data, error } = await supabase
     .from('strategies')
@@ -114,25 +115,34 @@ export async function fetchStrategies() {
   return data ?? []
 }
 
+// 레이블·버전 맵용 — type='strategy' 전체 (비활성 포함, 통계 표시에 필요)
+export async function fetchStrategyMeta() {
+  const { data } = await supabase
+    .from('strategies')
+    .select('id, name, version')
+    .eq('type', 'strategy')
+    .order('priority', { ascending: true })
+  return data ?? []
+}
+
 // v1 레거시 전략 ID (strategies 테이블에 없지만 과거 거래에 존재)
 const LEGACY_STRATEGY_IDS = ['bb_reversal', 'rsi_reversal']
 
 export async function fetchStrategyStats() {
-  // strategies 테이블에서 현재 활성 전략 ID를 동적으로 가져옴 (type='strategy' 만)
+  // strategies 테이블의 모든 type='strategy' 항목 (활성+비활성) — 과거 거래 포함
   const { data: stratRows } = await supabase
     .from('strategies')
     .select('id')
-    .eq('is_active', true)
     .eq('type', 'strategy')
     .order('priority', { ascending: true })
 
-  const activeIds = stratRows?.length
+  const stratIds = stratRows?.length
     ? stratRows.map(s => s.id)
     : ['pullback', 'consolidation', 'rsi_bb_combo', 'breakout_52w', 'ma_cross',
        'ma_cross_pending', 'breakout_pending', 'volume_surge_pending']
 
-  // v1 레거시 전략도 포함 (과거 데이터 표시용)
-  const allIds = [...activeIds, ...LEGACY_STRATEGY_IDS]
+  // bb_reversal·rsi_reversal은 DB에 없는 v1 레거시 → 별도 추가
+  const allIds = [...stratIds, ...LEGACY_STRATEGY_IDS]
 
   const { data, error } = await supabase
     .from('trades')
