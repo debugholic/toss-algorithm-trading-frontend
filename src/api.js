@@ -104,15 +104,42 @@ export async function fetchSnapshotHistory() {
   return result
 }
 
+export async function fetchStrategies() {
+  const { data, error } = await supabase
+    .from('strategies')
+    .select('*')
+    .eq('is_active', true)
+    .order('priority', { ascending: true })
+  if (error) throw error
+  return data ?? []
+}
+
+// v1 레거시 전략 ID (strategies 테이블에 없지만 과거 거래에 존재)
+const LEGACY_STRATEGY_IDS = ['bb_reversal', 'rsi_reversal']
+
 export async function fetchStrategyStats() {
+  // strategies 테이블에서 현재 활성 전략 ID를 동적으로 가져옴
+  const { data: stratRows } = await supabase
+    .from('strategies')
+    .select('id')
+    .eq('is_active', true)
+    .order('priority', { ascending: true })
+
+  const activeIds = stratRows?.length
+    ? stratRows.map(s => s.id)
+    : ['pullback', 'consolidation', 'rsi_bb_combo', 'breakout_52w', 'ma_cross',
+       'ma_cross_pending', 'breakout_pending', 'volume_surge_pending']
+
+  // v1 레거시 전략도 포함 (과거 데이터 표시용)
+  const allIds = [...activeIds, ...LEGACY_STRATEGY_IDS]
+
   const { data, error } = await supabase
     .from('trades')
     .select('strategy, action, pnl, pnl_pct')
   if (error) throw error
 
-  const STRATEGIES = ['ma_cross', 'breakout_52w', 'bb_reversal', 'rsi_reversal']
   const map = {}
-  STRATEGIES.forEach(s => { map[s] = { trades: 0, wins: 0, pnlSum: 0, pnlPctSum: 0 } })
+  allIds.forEach(s => { map[s] = { trades: 0, wins: 0, pnlSum: 0, pnlPctSum: 0 } })
 
   data.forEach(t => {
     if (t.action?.toLowerCase() !== 'sell') return
@@ -133,13 +160,13 @@ export async function fetchStrategyStats() {
     })
   })
 
-  return STRATEGIES.map(s => {
+  return allIds.map(s => {
     const m = map[s]
     const hasTrades = m.trades > 0
     return {
-      strategy: s,
-      trades:   hasTrades ? m.trades : null,
-      winRate:  hasTrades ? Math.round((m.wins / m.trades) * 100) : null,
+      strategy:  s,
+      trades:    hasTrades ? m.trades : null,
+      winRate:   hasTrades ? Math.round((m.wins / m.trades) * 100) : null,
       avgPnlPct: hasTrades ? +(m.pnlPctSum / m.trades).toFixed(2) : null,
       totalPnl:  hasTrades ? Math.round(m.pnlSum) : null,
     }
@@ -148,8 +175,9 @@ export async function fetchStrategyStats() {
 
 // config.py STRATEGY_CHANGELOG 와 동기화
 const VERSION_FALLBACK = [
-  { version: 'v1', name: 'MA 크로스·RSI 역발산',      since: '2026-01-01' },
-  { version: 'v2', name: '눌림목·조정구간 혼합전략',   since: '2026-05-27' },
+  { version: 'v1', name: 'MA 크로스·RSI 역발산',            since: '2026-01-01' },
+  { version: 'v2', name: '눌림목·조정구간 혼합전략',         since: '2026-05-27' },
+  { version: 'v3', name: '임박 신호 전략 + Chronos 필터',   since: '2026-05-28' },
 ]
 
 export async function fetchVersionPerformance() {

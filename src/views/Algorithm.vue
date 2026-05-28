@@ -18,7 +18,7 @@
         <div class="ver-cols">
           <div v-for="v in versionPerf" :key="v.version" class="ver-col">
             <div class="ver-top">
-              <span :class="['ver-badge', { active: v.version === versionPerf[versionPerf.length - 1]?.version }]">{{ v.version }}</span>
+              <span :class="['ver-badge', `ver-${v.version}`, { active: v.version === versionPerf[versionPerf.length - 1]?.version }]">{{ v.version }}</span>
               <span class="ver-name">{{ v.name }}</span>
             </div>
             <div v-if="v.sell_count === 0" class="ver-empty">집계 중</div>
@@ -59,7 +59,7 @@
           </thead>
           <tbody>
             <tr v-for="row in strategyStats" :key="row.strategy">
-              <td>{{ STRATEGY_LABELS[row.strategy] }}</td>
+              <td>{{ strategyLabelMap[row.strategy] ?? row.strategy }}<span v-if="['bb_reversal','rsi_reversal'].includes(row.strategy)" class="ver-badge ver-v1" style="margin-left:6px">v1</span></td>
               <td>{{ row.trades ?? '-' }}</td>
               <td>{{ row.winRate != null ? row.winRate + '%' : '-' }}</td>
               <td :class="pnlClass(row.avgPnlPct)">{{ row.avgPnlPct != null ? (row.avgPnlPct > 0 ? '+' : '') + row.avgPnlPct + '%' : '-' }}</td>
@@ -71,7 +71,7 @@
         <!-- 닫힌 상태: 요약 -->
         <div v-else class="perf-summary">
           <div v-for="row in strategyStats" :key="row.strategy" class="perf-chip">
-            <span class="chip-name">{{ STRATEGY_LABELS[row.strategy] }}</span>
+            <span class="chip-name">{{ strategyLabelMap[row.strategy] ?? row.strategy }}<span v-if="['bb_reversal','rsi_reversal'].includes(row.strategy)" class="ver-badge ver-v1" style="margin-left:6px">v1</span></span>
             <span v-if="row.trades" class="chip-stats">
               <span :class="pnlClass(row.winRate - 50)">승률 {{ row.winRate }}%</span>
               <span class="chip-sep">·</span>
@@ -87,7 +87,7 @@
       <div class="strategy-grid" ref="gridRef">
 
         <!-- 듀얼 모멘텀 게이트 (데스크탑: full-width, 모바일: 첫 번째 카드) -->
-        <div class="card gate-card">
+        <div class="card gate-card card-amber">
           <div class="card-title">🚦 듀얼 모멘텀 <span class="badge gate">시장 게이트</span></div>
           <div class="block">
             <div class="block-title">왜 이 전략?</div>
@@ -103,199 +103,36 @@
           </div>
         </div>
 
-        <!-- MA 크로스 -->
-        <div class="card">
-          <div class="card-title">📈 MA 크로스 <span class="badge trend-up">ADX ≥ 25, +DI 우세</span></div>
+        <!-- 전략 카드 동적 렌더링 (Supabase strategies 테이블) -->
+        <div
+          v-for="strat in strategies"
+          :key="strat.id"
+          :class="['card', strat.card_color]"
+        >
+          <div class="card-title">
+            {{ strat.icon }} {{ strat.name }}
+            <span :class="['badge', strat.badge_type]">{{ strat.badge_text }}</span>
+          </div>
           <div class="block">
             <div class="block-title">왜 이 전략?</div>
-            <p>강한 상승추세에서 이동평균선 골든크로스를 포착합니다. ADX가 25 이상이고 +DI가 -DI보다 클 때 — 즉 방향이 위를 향한 추세장에서만 진입합니다.</p>
+            <p>{{ strat.description }}</p>
           </div>
           <div class="block">
             <div class="block-title">매수 · 매도 흐름</div>
             <div class="flow">
-              <div class="flow-item"><span class="tag buy">발굴</span> {{ cfg.short_ma }}일선이 {{ cfg.long_ma }}일선을 상향 돌파 (골든크로스)</div>
-              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
-              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
-              <div class="flow-item"><span class="tag sell">매도</span> 데드크로스 발생 즉시 전량 매도</div>
-              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
+              <div
+                v-for="(step, i) in strat.flow"
+                :key="i"
+                class="flow-item"
+              >
+                <span :class="['tag', step.tag]">{{ step.label }}</span>{{ step.text }}
+              </div>
             </div>
           </div>
           <div class="metric-row">
             <div class="metric">
               <div class="label">마지막 스캔 발굴</div>
-              <div class="value">{{ maCnt }}종목</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 52주 신고가 돌파 -->
-        <div class="card">
-          <div class="card-title">🔴 52주 신고가 돌파 <span class="badge trend-up">ADX ≥ 25, +DI 우세</span></div>
-          <div class="block">
-            <div class="block-title">왜 이 전략?</div>
-            <p>강한 상승추세에서 MA 크로스보다 더 강력한 모멘텀을 포착합니다. {{ cfg.lookback_52w }}거래일 신고가를 돌파한 종목은 저항선이 사라지고 추가 상승 모멘텀이 가장 강한 상태입니다.</p>
-          </div>
-          <div class="block">
-            <div class="block-title">매수 · 매도 흐름</div>
-            <div class="flow">
-              <div class="flow-item"><span class="tag buy">발굴</span> 오늘 종가가 {{ cfg.lookback_52w }}거래일 최고가를 돌파</div>
-              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
-              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
-              <div class="flow-item"><span class="tag sell">매도</span> 데드크로스 발생 시 전량 매도</div>
-              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
-            </div>
-          </div>
-          <div class="metric-row">
-            <div class="metric">
-              <div class="label">마지막 스캔 발굴</div>
-              <div class="value">{{ breakoutCnt }}종목</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 눌림목 -->
-        <div class="card">
-          <div class="card-title">🔶 눌림목 <span class="badge pullback">상승추세 조정</span></div>
-          <div class="block">
-            <div class="block-title">왜 이 전략?</div>
-            <p>상승추세(MA5 &gt; MA20) 중 주가가 MA20 부근으로 눌린 뒤 반등을 시작할 때 진입합니다. 거래량이 평균 이하로 줄어든 건강한 조정이어야 하며, 패닉셀과 구분됩니다. 추세가 살아있는 상태에서 최적의 진입 타이밍을 노립니다.</p>
-          </div>
-          <div class="block">
-            <div class="block-title">매수 · 매도 흐름</div>
-            <div class="flow">
-              <div class="flow-item"><span class="tag buy">발굴</span> MA5 &gt; MA20 유지 + 현재가 MA20~MA20×1.03 구간 + 거래량 평균 이하</div>
-              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입 (갭업 0.5% 초과 시 보류)</div>
-              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
-              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
-            </div>
-          </div>
-          <div class="metric-row">
-            <div class="metric">
-              <div class="label">마지막 스캔 발굴</div>
-              <div class="value">{{ pullbackCnt }}종목</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 조정구간 -->
-        <div class="card">
-          <div class="card-title">🟡 조정구간 <span class="badge pullback">횡보 에너지 축적</span></div>
-          <div class="block">
-            <div class="block-title">왜 이 전략?</div>
-            <p>상승추세 중 5거래일 내 레인지 5% 이내로 좁게 횡보하며 에너지가 축적된 종목입니다. 거래량 감소가 동반될수록 폭발적인 돌파 가능성이 높아집니다. 레인지 상단 돌파 시점을 포착해 선제 진입합니다.</p>
-          </div>
-          <div class="block">
-            <div class="block-title">매수 · 매도 흐름</div>
-            <div class="flow">
-              <div class="flow-item"><span class="tag buy">발굴</span> MA5 &gt; MA20 + 현재가 MA20 위 + 5일 레인지 ≤5% + 거래량 20일 평균의 80% 이하</div>
-              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 (레인지 상단 돌파 1% 이내만)</div>
-              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
-              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
-            </div>
-          </div>
-          <div class="metric-row">
-            <div class="metric">
-              <div class="label">마지막 스캔 발굴</div>
-              <div class="value">{{ consolCnt }}종목</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- RSI+BB 복합 -->
-        <div class="card">
-          <div class="card-title">🟣 RSI+BB 복합 <span class="badge sideways">강한 역추세</span></div>
-          <div class="block">
-            <div class="block-title">왜 이 전략?</div>
-            <p>RSI 40 이하 과매도 + 볼린저 밴드 하단 반등을 동시에 충족해야 진입합니다. 단독 RSI보다 변동성 정보가 추가되어 신뢰도가 높고, 거래량 폭증 조건이 없어 조용한 반등 구간에서 유효합니다.</p>
-          </div>
-          <div class="block">
-            <div class="block-title">매수 · 매도 흐름</div>
-            <div class="flow">
-              <div class="flow-item"><span class="tag buy">발굴</span> RSI ≤ 40 + 전날 BB 하단 이하 → 오늘 BB 하단 위로 반등</div>
-              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
-              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
-              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -5% 도달 시</div>
-            </div>
-          </div>
-          <div class="metric-row">
-            <div class="metric">
-              <div class="label">마지막 스캔 발굴</div>
-              <div class="value">{{ rsiBBCnt }}종목</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- v3 임박 신호: 골든크로스 임박 -->
-        <div class="card">
-          <div class="card-title">🟢⏳ 골든크로스 임박 <span class="badge pending">v3 선행 진입</span></div>
-          <div class="block">
-            <div class="block-title">왜 이 전략?</div>
-            <p>MA5와 MA20의 격차가 1% 이내로 좁혀져 곧 골든크로스가 발생할 가능성이 높은 종목입니다. 메인 골든크로스 전략이 포착하지 못한 직전 구간에서 선제 진입합니다. 실제 골든크로스 발생 시 추가 수익 가능성이 있습니다.</p>
-          </div>
-          <div class="block">
-            <div class="block-title">매수 · 매도 흐름</div>
-            <div class="flow">
-              <div class="flow-item"><span class="tag buy">발굴</span> MA5 &lt; MA20 (아직 교차 전) + MA20 대비 격차 ≤ 1%</div>
-              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
-              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
-              <div class="flow-item"><span class="tag sell">매도</span> 데드크로스 발생 시 전량 매도</div>
-              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
-            </div>
-          </div>
-          <div class="metric-row">
-            <div class="metric">
-              <div class="label">마지막 스캔 발굴</div>
-              <div class="value">{{ maPendingCnt }}종목</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- v3 임박 신호: 52주 고가 임박 -->
-        <div class="card">
-          <div class="card-title">🔴⏳ 52주 고가 임박 <span class="badge pending">v3 선행 진입</span></div>
-          <div class="block">
-            <div class="block-title">왜 이 전략?</div>
-            <p>현재가가 52주 최고가의 95% 이상으로 진입했지만 아직 신고가를 갱신하지 않은 종목입니다. 신고가 돌파 직전 저항선 바로 아래에서 선제 진입해 돌파 직후 모멘텀을 함께 탑니다.</p>
-          </div>
-          <div class="block">
-            <div class="block-title">매수 · 매도 흐름</div>
-            <div class="flow">
-              <div class="flow-item"><span class="tag buy">발굴</span> 52주 최고가 × 0.95 ≤ 현재가 &lt; 52주 최고가</div>
-              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
-              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
-              <div class="flow-item"><span class="tag sell">매도</span> 데드크로스 발생 시 전량 매도</div>
-              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
-            </div>
-          </div>
-          <div class="metric-row">
-            <div class="metric">
-              <div class="label">마지막 스캔 발굴</div>
-              <div class="value">{{ breakoutPendingCnt }}종목</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- v3 임박 신호: 거래량 증가 임박 -->
-        <div class="card">
-          <div class="card-title">🟠⏳ 거래량 증가 임박 <span class="badge pending">v3 선행 진입</span></div>
-          <div class="block">
-            <div class="block-title">왜 이 전략?</div>
-            <p>5일 평균 거래량이 20일 평균의 1.3배 이상으로 증가하고 있으며, 최근 2일 연속 양봉을 기록한 종목입니다. 거래량 폭증 기준(1.5배)에 아직 못 미치지만 세력 유입 초기 신호로, 본격적인 모멘텀 전략 진입 전에 선행 포지션을 잡습니다.</p>
-          </div>
-          <div class="block">
-            <div class="block-title">매수 · 매도 흐름</div>
-            <div class="flow">
-              <div class="flow-item"><span class="tag buy">발굴</span> 5일 평균 거래량 ÷ 20일 평균 ∈ [1.3, 1.5) + 최근 2일 연속 양봉</div>
-              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
-              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
-              <div class="flow-item"><span class="tag sell">매도</span> 데드크로스 발생 시 전량 매도</div>
-              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
-            </div>
-          </div>
-          <div class="metric-row">
-            <div class="metric">
-              <div class="label">마지막 스캔 발굴</div>
-              <div class="value">{{ volSurgePendingCnt }}종목</div>
+              <div class="value">{{ scanCounts[strat.id] ?? 0 }}종목</div>
             </div>
           </div>
         </div>
@@ -325,21 +162,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
-import { fetchConfig, fetchScans, fetchStrategyStats, fetchVersionPerformance } from '../api.js'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { fetchConfig, fetchScans, fetchStrategyStats, fetchVersionPerformance, fetchStrategies } from '../api.js'
 
-const STRATEGY_LABELS = {
-  pullback:              '눌림목',
-  consolidation:         '조정구간',
-  rsi_bb_combo:          'RSI+BB 복합',
-  breakout_52w:          '52주 신고가',
-  ma_cross:              'MA 크로스',
-  ma_cross_pending:      '골든크로스 임박',
-  breakout_pending:      '52주 고가 임박',
-  volume_surge_pending:  '거래량 증가 임박',
-  // v1 레거시 (보유 종목 표기용, 신규 진입 없음)
-  bb_reversal:           'BB 반등 (v1)',
-  rsi_reversal:          'RSI 역발산 (v1)',
+// v1 레거시 전략명 (strategies 테이블에 없는 과거 ID)
+const LEGACY_LABELS = {
+  bb_reversal:  'BB 반등',
+  rsi_reversal: 'RSI 역발산',
 }
 
 const perfOpen = ref(false)
@@ -405,17 +234,18 @@ function setupInfiniteCarousel() {
   }))
 }
 
-const versionPerf        = ref([])
-const maCnt              = ref(0)
-const breakoutCnt        = ref(0)
-const pullbackCnt        = ref(0)
-const consolCnt          = ref(0)
-const rsiBBCnt           = ref(0)
-const maPendingCnt       = ref(0)
-const breakoutPendingCnt = ref(0)
-const volSurgePendingCnt = ref(0)
-const lastScanDate = ref('-')
+const versionPerf   = ref([])
+const strategies    = ref([])    // Supabase strategies 테이블
+const scanCounts    = ref({})    // { strategy_id: count }
+const lastScanDate  = ref('-')
 const strategyStats = ref([])
+
+// 성과 테이블용 레이블 맵 (strategies + legacy)
+const strategyLabelMap = computed(() => {
+  const map = { ...LEGACY_LABELS }
+  strategies.value.forEach(s => { map[s.id] = s.name })
+  return map
+})
 
 function pnlClass(val) {
   if (val == null) return ''
@@ -428,28 +258,44 @@ function formatPnl(val) {
 }
 
 onMounted(async () => {
-  const [config, scans, stats, verPerf] = await Promise.all([
-    fetchConfig(), fetchScans(), fetchStrategyStats(), fetchVersionPerformance().catch(() => [])
+  const [config, scans, stats, verPerf, strats] = await Promise.all([
+    fetchConfig(),
+    fetchScans(),
+    fetchStrategyStats(),
+    fetchVersionPerformance().catch(() => []),
+    fetchStrategies().catch(() => []),
   ])
-  cfg.value = config
+  cfg.value           = config
   strategyStats.value = stats
-  versionPerf.value = verPerf
+  versionPerf.value   = verPerf
+  strategies.value    = strats
 
   if (scans.length) {
     const last = scans[0]
-    lastScanDate.value = last.scanned_at.slice(0, 10) + ' ' + last.scanned_at.slice(11, 16)
+    const kst  = new Date(new Date(last.scanned_at).getTime() + 9 * 3600 * 1000)
+    lastScanDate.value = kst.toISOString().slice(0, 10) + ' ' + kst.toISOString().slice(11, 16) + ' KST'
+
+    // strategy 필드 기반 집계 (r.strategy 가 없으면 signal 텍스트로 폴백)
+    const counts = {}
     last.results.forEach(r => {
-      const sig = r.signal ?? ''
-      if      (sig.includes('눌림목'))              pullbackCnt.value++
-      else if (sig.includes('조정구간'))             consolCnt.value++
-      else if (sig.includes('RSI+BB'))              rsiBBCnt.value++
-      else if (sig.includes('신고가') && !sig.includes('임박')) breakoutCnt.value++
-      else if (sig.includes('골든크로스') && !sig.includes('임박')) maCnt.value++
-      else if (sig.includes('골든크로스 임박'))        maPendingCnt.value++
-      else if (sig.includes('고가 임박'))              breakoutPendingCnt.value++
-      else if (sig.includes('연속 양봉'))              volSurgePendingCnt.value++
+      let sid = r.strategy
+      if (!sid) {
+        // 구형 스캔 레코드 폴백 — signal 텍스트 매칭
+        const sig = r.signal ?? ''
+        if      (sig.includes('눌림목'))                          sid = 'pullback'
+        else if (sig.includes('조정구간'))                         sid = 'consolidation'
+        else if (sig.includes('RSI+BB'))                          sid = 'rsi_bb_combo'
+        else if (sig.includes('신고가') && !sig.includes('임박')) sid = 'breakout_52w'
+        else if (sig.includes('골든크로스') && !sig.includes('임박')) sid = 'ma_cross'
+        else if (sig.includes('골든크로스 임박'))                   sid = 'ma_cross_pending'
+        else if (sig.includes('고가 임박'))                        sid = 'breakout_pending'
+        else if (sig.includes('연속 양봉'))                        sid = 'volume_surge_pending'
+      }
+      if (sid) counts[sid] = (counts[sid] ?? 0) + 1
     })
+    scanCounts.value = counts
   }
+
   await nextTick()
   setupInfiniteCarousel()  // 내부에서 rAF 2회 후 실행됨
 })
@@ -467,8 +313,11 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .ver-cols { display: flex; gap: 12px; }
 .ver-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
 .ver-top { display: flex; align-items: center; gap: 6px; }
-.ver-badge { font-size: 11px; font-weight: 800; color: #aaa; background: #f0f0f0; border-radius: 4px; padding: 1px 6px; flex-shrink: 0; }
-.ver-badge.active { background: #1a1a2e; color: #fff; }
+.ver-badge { font-size: 11px; font-weight: 700; color: #888; background: #f0f0f0; border-radius: 20px; padding: 2px 8px; flex-shrink: 0; }
+.ver-badge.ver-v1 { background: #f0f0f0; color: #888; }
+.ver-badge.ver-v2 { background: #dbeafe; color: #1d4ed8; }
+.ver-badge.ver-v3 { background: #d1fae5; color: #059669; }
+.ver-badge.active { background: #1a1a2e !important; color: #fff !important; }
 .ver-name { font-size: 12px; font-weight: 600; color: #555; }
 .ver-empty { font-size: 12px; color: #bbb; padding: 4px 0; }
 .ver-bar-wrap { display: flex; align-items: center; gap: 6px; }
@@ -621,7 +470,12 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .tag.loss  { background: #fef3c7; color: #d97706; }
 
 .metric-row { margin-top: auto; padding-top: 16px; border-top: 1px solid #f0f0f0; }
-.chronos-card { border: 1.5px solid #bbf7d0; background: #f0fdf4; }
+.chronos-card { background: linear-gradient(160deg, #f0fdf4 0%, #fff 60%); border: 1.5px solid #bbf7d0; }
+.card-amber  { background: linear-gradient(160deg, #fffbf0 0%, #fff 60%); border: 1.5px solid #fcd34d; }
+.card-red    { background: linear-gradient(160deg, #fff5f5 0%, #fff 60%); border: 1.5px solid #fca5a5; }
+.card-orange { background: linear-gradient(160deg, #fff7ed 0%, #fff 60%); border: 1.5px solid #fdba74; }
+.card-purple { background: linear-gradient(160deg, #f5f3ff 0%, #fff 60%); border: 1.5px solid #c4b5fd; }
+.card-teal   { background: linear-gradient(160deg, #f0fdfa 0%, #fff 60%); border: 1.5px solid #99f6e4; }
 .metric .label { font-size: 13px; color: #888; margin-bottom: 4px; }
 .metric .value { font-size: 24px; font-weight: 700; color: #1a1a2e; }
 </style>
