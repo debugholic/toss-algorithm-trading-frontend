@@ -59,7 +59,7 @@
           </thead>
           <tbody>
             <tr v-for="row in strategyStats" :key="row.strategy">
-              <td>{{ strategyLabelMap[row.strategy] ?? row.strategy }}<span v-if="['bb_reversal','rsi_reversal'].includes(row.strategy)" class="ver-badge ver-v1" style="margin-left:6px">v1</span></td>
+              <td>{{ strategyLabelMap[row.strategy] ?? row.strategy }}<span :class="['ver-badge', `ver-${strategyVersionMap[row.strategy] ?? 'v1'}`]" style="margin-left:6px">{{ strategyVersionMap[row.strategy] ?? 'v1' }}</span></td>
               <td>{{ row.trades ?? '-' }}</td>
               <td>{{ row.winRate != null ? row.winRate + '%' : '-' }}</td>
               <td :class="pnlClass(row.avgPnlPct)">{{ row.avgPnlPct != null ? (row.avgPnlPct > 0 ? '+' : '') + row.avgPnlPct + '%' : '-' }}</td>
@@ -71,7 +71,7 @@
         <!-- 닫힌 상태: 요약 -->
         <div v-else class="perf-summary">
           <div v-for="row in strategyStats" :key="row.strategy" class="perf-chip">
-            <span class="chip-name">{{ strategyLabelMap[row.strategy] ?? row.strategy }}<span v-if="['bb_reversal','rsi_reversal'].includes(row.strategy)" class="ver-badge ver-v1" style="margin-left:6px">v1</span></span>
+            <span class="chip-name">{{ strategyLabelMap[row.strategy] ?? row.strategy }}<span :class="['ver-badge', `ver-${strategyVersionMap[row.strategy] ?? 'v1'}`]" style="margin-left:6px">{{ strategyVersionMap[row.strategy] ?? 'v1' }}</span></span>
             <span v-if="row.trades" class="chip-stats">
               <span :class="pnlClass(row.winRate - 50)">승률 {{ row.winRate }}%</span>
               <span class="chip-sep">·</span>
@@ -112,6 +112,7 @@
           <div class="card-title">
             {{ strat.icon }} {{ strat.name }}
             <span :class="['badge', strat.badge_type]">{{ strat.badge_text }}</span>
+            <span :class="['ver-badge', `ver-${strat.version ?? 'v1'}`]">{{ strat.version ?? 'v1' }}</span>
           </div>
           <div class="block">
             <div class="block-title">왜 이 전략?</div>
@@ -244,6 +245,14 @@ const strategyStats = ref([])
 const strategyLabelMap = computed(() => {
   const map = { ...LEGACY_LABELS }
   strategies.value.forEach(s => { map[s.id] = s.name })
+  return map
+})
+
+// 전략 버전 맵 (strategies + 레거시 v1 하드코딩)
+const LEGACY_VERSIONS = { bb_reversal: 'v1', rsi_reversal: 'v1', ma_cross: 'v1', breakout_52w: 'v1' }
+const strategyVersionMap = computed(() => {
+  const map = { ...LEGACY_VERSIONS }
+  strategies.value.forEach(s => { map[s.id] = s.version ?? 'v1' })
   return map
 })
 
