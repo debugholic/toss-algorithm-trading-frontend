@@ -153,52 +153,149 @@
           </div>
         </div>
 
-        <!-- 볼린저 밴드 반등 -->
+        <!-- 눌림목 -->
         <div class="card">
-          <div class="card-title">🔵 볼린저 밴드 반등 <span class="badge neutral">ADX 20~25</span></div>
+          <div class="card-title">🔶 눌림목 <span class="badge pullback">상승추세 조정</span></div>
           <div class="block">
             <div class="block-title">왜 이 전략?</div>
-            <p>ADX 20~25 횡보/불명확 구간을 커버합니다. 방향성이 애매한 시장에서 볼린저 밴드 하단 터치 후 반등을 포착합니다. RSI보다 변동성 정보가 추가로 반영되어 진입 타이밍이 더 정교합니다.</p>
+            <p>상승추세(MA5 &gt; MA20) 중 주가가 MA20 부근으로 눌린 뒤 반등을 시작할 때 진입합니다. 거래량이 평균 이하로 줄어든 건강한 조정이어야 하며, 패닉셀과 구분됩니다. 추세가 살아있는 상태에서 최적의 진입 타이밍을 노립니다.</p>
           </div>
           <div class="block">
             <div class="block-title">매수 · 매도 흐름</div>
             <div class="flow">
-              <div class="flow-item"><span class="tag buy">발굴</span> {{ cfg.bb_period }}일 이동평균 ± {{ cfg.bb_std }}σ 하단 터치 후 반등 확인</div>
-              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
+              <div class="flow-item"><span class="tag buy">발굴</span> MA5 &gt; MA20 유지 + 현재가 MA20~MA20×1.03 구간 + 거래량 평균 이하</div>
+              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입 (갭업 0.5% 초과 시 보류)</div>
               <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
-              <div class="flow-item"><span class="tag sell">매도</span> 볼린저 밴드 중간선({{ cfg.bb_period }}일 MA) 도달 시</div>
-              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -5% 도달 시</div>
+              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
             </div>
           </div>
           <div class="metric-row">
             <div class="metric">
               <div class="label">마지막 스캔 발굴</div>
-              <div class="value">{{ bbCnt }}종목</div>
+              <div class="value">{{ pullbackCnt }}종목</div>
             </div>
           </div>
         </div>
 
-        <!-- RSI 역발산 -->
+        <!-- 조정구간 -->
         <div class="card">
-          <div class="card-title">🟣 RSI 역발산 <span class="badge sideways">ADX &lt; 20</span></div>
+          <div class="card-title">🟡 조정구간 <span class="badge pullback">횡보 에너지 축적</span></div>
           <div class="block">
             <div class="block-title">왜 이 전략?</div>
-            <p>약한 횡보장(ADX &lt; 20)에서 RSI 과매도 구간의 반등을 노립니다. 방향성이 없는 시장에서 추세 전략은 잦은 손절을 유발하므로, 낙폭 과대 종목의 단기 반등이 유효합니다.</p>
+            <p>상승추세 중 5거래일 내 레인지 5% 이내로 좁게 횡보하며 에너지가 축적된 종목입니다. 거래량 감소가 동반될수록 폭발적인 돌파 가능성이 높아집니다. 레인지 상단 돌파 시점을 포착해 선제 진입합니다.</p>
           </div>
           <div class="block">
             <div class="block-title">매수 · 매도 흐름</div>
             <div class="flow">
-              <div class="flow-item"><span class="tag buy">발굴</span> RSI ≤ {{ cfg.rsi_buy_threshold }} (과매도 구간 진입)</div>
+              <div class="flow-item"><span class="tag buy">발굴</span> MA5 &gt; MA20 + 현재가 MA20 위 + 5일 레인지 ≤5% + 거래량 20일 평균의 80% 이하</div>
+              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 (레인지 상단 돌파 1% 이내만)</div>
+              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
+              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
+            </div>
+          </div>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="label">마지막 스캔 발굴</div>
+              <div class="value">{{ consolCnt }}종목</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RSI+BB 복합 -->
+        <div class="card">
+          <div class="card-title">🟣 RSI+BB 복합 <span class="badge sideways">강한 역추세</span></div>
+          <div class="block">
+            <div class="block-title">왜 이 전략?</div>
+            <p>RSI 40 이하 과매도 + 볼린저 밴드 하단 반등을 동시에 충족해야 진입합니다. 단독 RSI보다 변동성 정보가 추가되어 신뢰도가 높고, 거래량 폭증 조건이 없어 조용한 반등 구간에서 유효합니다.</p>
+          </div>
+          <div class="block">
+            <div class="block-title">매수 · 매도 흐름</div>
+            <div class="flow">
+              <div class="flow-item"><span class="tag buy">발굴</span> RSI ≤ 40 + 전날 BB 하단 이하 → 오늘 BB 하단 위로 반등</div>
               <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
               <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
-              <div class="flow-item"><span class="tag sell">매도</span> RSI ≥ {{ cfg.rsi_sell_threshold }} 도달 시 전량 매도</div>
               <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -5% 도달 시</div>
             </div>
           </div>
           <div class="metric-row">
             <div class="metric">
               <div class="label">마지막 스캔 발굴</div>
-              <div class="value">{{ rsiCnt }}종목</div>
+              <div class="value">{{ rsiBBCnt }}종목</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- v3 임박 신호: 골든크로스 임박 -->
+        <div class="card">
+          <div class="card-title">🟢⏳ 골든크로스 임박 <span class="badge pending">v3 선행 진입</span></div>
+          <div class="block">
+            <div class="block-title">왜 이 전략?</div>
+            <p>MA5와 MA20의 격차가 1% 이내로 좁혀져 곧 골든크로스가 발생할 가능성이 높은 종목입니다. 메인 골든크로스 전략이 포착하지 못한 직전 구간에서 선제 진입합니다. 실제 골든크로스 발생 시 추가 수익 가능성이 있습니다.</p>
+          </div>
+          <div class="block">
+            <div class="block-title">매수 · 매도 흐름</div>
+            <div class="flow">
+              <div class="flow-item"><span class="tag buy">발굴</span> MA5 &lt; MA20 (아직 교차 전) + MA20 대비 격차 ≤ 1%</div>
+              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
+              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
+              <div class="flow-item"><span class="tag sell">매도</span> 데드크로스 발생 시 전량 매도</div>
+              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
+            </div>
+          </div>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="label">마지막 스캔 발굴</div>
+              <div class="value">{{ maPendingCnt }}종목</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- v3 임박 신호: 52주 고가 임박 -->
+        <div class="card">
+          <div class="card-title">🔴⏳ 52주 고가 임박 <span class="badge pending">v3 선행 진입</span></div>
+          <div class="block">
+            <div class="block-title">왜 이 전략?</div>
+            <p>현재가가 52주 최고가의 95% 이상으로 진입했지만 아직 신고가를 갱신하지 않은 종목입니다. 신고가 돌파 직전 저항선 바로 아래에서 선제 진입해 돌파 직후 모멘텀을 함께 탑니다.</p>
+          </div>
+          <div class="block">
+            <div class="block-title">매수 · 매도 흐름</div>
+            <div class="flow">
+              <div class="flow-item"><span class="tag buy">발굴</span> 52주 최고가 × 0.95 ≤ 현재가 &lt; 52주 최고가</div>
+              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
+              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
+              <div class="flow-item"><span class="tag sell">매도</span> 데드크로스 발생 시 전량 매도</div>
+              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
+            </div>
+          </div>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="label">마지막 스캔 발굴</div>
+              <div class="value">{{ breakoutPendingCnt }}종목</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- v3 임박 신호: 거래량 증가 임박 -->
+        <div class="card">
+          <div class="card-title">🟠⏳ 거래량 증가 임박 <span class="badge pending">v3 선행 진입</span></div>
+          <div class="block">
+            <div class="block-title">왜 이 전략?</div>
+            <p>5일 평균 거래량이 20일 평균의 1.3배 이상으로 증가하고 있으며, 최근 2일 연속 양봉을 기록한 종목입니다. 거래량 폭증 기준(1.5배)에 아직 못 미치지만 세력 유입 초기 신호로, 본격적인 모멘텀 전략 진입 전에 선행 포지션을 잡습니다.</p>
+          </div>
+          <div class="block">
+            <div class="block-title">매수 · 매도 흐름</div>
+            <div class="flow">
+              <div class="flow-item"><span class="tag buy">발굴</span> 5일 평균 거래량 ÷ 20일 평균 ∈ [1.3, 1.5) + 최근 2일 연속 양봉</div>
+              <div class="flow-item"><span class="tag buy">매수</span> ATR 범위 안에서 체결 확인 후 진입</div>
+              <div class="flow-item"><span class="tag trail">익절</span> 최고 수익 +{{ cfg.trailing_activation }}% 후 최고점 대비 -{{ cfg.trailing_drop }}% 이탈 시</div>
+              <div class="flow-item"><span class="tag sell">매도</span> 데드크로스 발생 시 전량 매도</div>
+              <div class="flow-item"><span class="tag loss">손절</span> 매수가 대비 -7% 도달 시</div>
+            </div>
+          </div>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="label">마지막 스캔 발굴</div>
+              <div class="value">{{ volSurgePendingCnt }}종목</div>
             </div>
           </div>
         </div>
@@ -214,10 +311,17 @@ import { ref, onMounted, nextTick } from 'vue'
 import { fetchConfig, fetchScans, fetchStrategyStats, fetchVersionPerformance } from '../api.js'
 
 const STRATEGY_LABELS = {
-  ma_cross:     'MA 크로스',
-  breakout_52w: '52주 신고가',
-  bb_reversal:  'BB 반등',
-  rsi_reversal: 'RSI 역발산',
+  pullback:              '눌림목',
+  consolidation:         '조정구간',
+  rsi_bb_combo:          'RSI+BB 복합',
+  breakout_52w:          '52주 신고가',
+  ma_cross:              'MA 크로스',
+  ma_cross_pending:      '골든크로스 임박',
+  breakout_pending:      '52주 고가 임박',
+  volume_surge_pending:  '거래량 증가 임박',
+  // v1 레거시 (보유 종목 표기용, 신규 진입 없음)
+  bb_reversal:           'BB 반등 (v1)',
+  rsi_reversal:          'RSI 역발산 (v1)',
 }
 
 const perfOpen = ref(false)
@@ -283,11 +387,15 @@ function setupInfiniteCarousel() {
   }))
 }
 
-const versionPerf  = ref([])
-const maCnt        = ref(0)
-const rsiCnt       = ref(0)
-const bbCnt        = ref(0)
-const breakoutCnt  = ref(0)
+const versionPerf        = ref([])
+const maCnt              = ref(0)
+const breakoutCnt        = ref(0)
+const pullbackCnt        = ref(0)
+const consolCnt          = ref(0)
+const rsiBBCnt           = ref(0)
+const maPendingCnt       = ref(0)
+const breakoutPendingCnt = ref(0)
+const volSurgePendingCnt = ref(0)
 const lastScanDate = ref('-')
 const strategyStats = ref([])
 
@@ -314,10 +422,14 @@ onMounted(async () => {
     lastScanDate.value = last.scanned_at.slice(0, 10) + ' ' + last.scanned_at.slice(11, 16)
     last.results.forEach(r => {
       const sig = r.signal ?? ''
-      if (sig.includes('골든크로스'))                    maCnt.value++
-      else if (sig.includes('RSI과매도') || sig.includes('RSI+BB') || sig.includes('RSI역발산')) rsiCnt.value++
-      else if (sig.includes('BB반등') || sig.includes('BB 반등'))  bbCnt.value++
-      else if (sig.includes('신고가'))                   breakoutCnt.value++
+      if      (sig.includes('눌림목'))              pullbackCnt.value++
+      else if (sig.includes('조정구간'))             consolCnt.value++
+      else if (sig.includes('RSI+BB'))              rsiBBCnt.value++
+      else if (sig.includes('신고가') && !sig.includes('임박')) breakoutCnt.value++
+      else if (sig.includes('골든크로스') && !sig.includes('임박')) maCnt.value++
+      else if (sig.includes('골든크로스 임박'))        maPendingCnt.value++
+      else if (sig.includes('고가 임박'))              breakoutPendingCnt.value++
+      else if (sig.includes('연속 양봉'))              volSurgePendingCnt.value++
     })
   }
   await nextTick()
@@ -465,6 +577,8 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .badge.trend-up { background: #fee2e2; color: #dc2626; }
 .badge.neutral  { background: #dbeafe; color: #1d4ed8; }
 .badge.sideways { background: #ede9fe; color: #7c3aed; }
+.badge.pullback { background: #ffedd5; color: #ea580c; }
+.badge.pending  { background: #f3f4f6; color: #6b7280; }
 
 .block {}
 .block-title { font-size: 13px; font-weight: 700; color: #555; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }
