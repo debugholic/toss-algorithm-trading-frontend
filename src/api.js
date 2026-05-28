@@ -118,11 +118,12 @@ export async function fetchStrategies() {
 const LEGACY_STRATEGY_IDS = ['bb_reversal', 'rsi_reversal']
 
 export async function fetchStrategyStats() {
-  // strategies 테이블에서 현재 활성 전략 ID를 동적으로 가져옴
+  // strategies 테이블에서 현재 활성 전략 ID를 동적으로 가져옴 (type='strategy' 만)
   const { data: stratRows } = await supabase
     .from('strategies')
     .select('id')
     .eq('is_active', true)
+    .eq('type', 'strategy')
     .order('priority', { ascending: true })
 
   const activeIds = stratRows?.length

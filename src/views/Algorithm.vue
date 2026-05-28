@@ -82,44 +82,26 @@
         </div>
       </div>
 
-      <!-- 전략 카드: 듀얼 모멘텀 포함 (데스크탑 2열 / 모바일 스와이프) -->
+      <!-- 전략 카드: 게이트·전략·필터 전체 동적 렌더링 (데스크탑 2열 / 모바일 스와이프) -->
       <div class="carousel-wrap">
       <div class="strategy-grid" ref="gridRef">
 
-        <!-- 듀얼 모멘텀 게이트 (데스크탑: full-width, 모바일: 첫 번째 카드) -->
-        <div class="card gate-card card-amber">
-          <div class="card-title">🚦 듀얼 모멘텀 <span class="badge gate">시장 게이트</span></div>
-          <div class="block">
-            <div class="block-title">왜 이 전략?</div>
-            <p>모든 전략의 최상위 관문입니다. KOSPI의 {{ cfg.lookback_52w }}거래일(약 1년) 수익률이 음수이면 시장 전체가 하락 중이라고 판단하고 스캔을 중단, 신규 매수를 전면 차단합니다. Gary Antonacci의 듀얼 모멘텀 이론 중 절대 모멘텀을 적용한 것입니다.</p>
-          </div>
-          <div class="block">
-            <div class="block-title">동작 흐름</div>
-            <div class="flow">
-              <div class="flow-item"><span class="tag buy">체크</span> KOSPI 현재가 vs {{ cfg.lookback_52w }}거래일 전 가격 비교</div>
-              <div class="flow-item"><span class="tag sell">차단</span> 1년 수익률 음수 → 스캔 중단, 대기 매수 전면 취소</div>
-              <div class="flow-item"><span class="tag trail">통과</span> 1년 수익률 양수 → 아래 전략 활성화</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 전략 카드 동적 렌더링 (Supabase strategies 테이블) -->
         <div
           v-for="strat in strategies"
           :key="strat.id"
-          :class="['card', strat.card_color]"
+          :class="['card', strat.card_color, { 'gate-card': strat.type !== 'strategy' }]"
         >
           <div class="card-title">
             {{ strat.icon }} {{ strat.name }}
             <span :class="['badge', strat.badge_type]">{{ strat.badge_text }}</span>
-            <span :class="['ver-badge', `ver-${strat.version ?? 'v1'}`]">{{ strat.version ?? 'v1' }}</span>
+            <span v-if="strat.type === 'strategy'" :class="['ver-badge', `ver-${strat.version ?? 'v1'}`]">{{ strat.version ?? 'v1' }}</span>
           </div>
           <div class="block">
-            <div class="block-title">왜 이 전략?</div>
+            <div class="block-title">{{ strat.type === 'filter' ? '왜 이 필터?' : '왜 이 전략?' }}</div>
             <p>{{ strat.description }}</p>
           </div>
           <div class="block">
-            <div class="block-title">매수 · 매도 흐름</div>
+            <div class="block-title">{{ strat.type === 'gate' ? '동작 흐름' : strat.type === 'filter' ? '통과 조건' : '매수 · 매도 흐름' }}</div>
             <div class="flow">
               <div
                 v-for="(step, i) in strat.flow"
@@ -130,28 +112,10 @@
               </div>
             </div>
           </div>
-          <div class="metric-row">
+          <div v-if="strat.type === 'strategy'" class="metric-row">
             <div class="metric">
               <div class="label">마지막 스캔 발굴</div>
               <div class="value">{{ scanCounts[strat.id] ?? 0 }}종목</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Chronos 최종 검증 -->
-        <div class="card gate-card chronos-card">
-          <div class="card-title">🤖 Chronos AI 검증 <span class="badge chronos">최종 필터</span></div>
-          <div class="block">
-            <div class="block-title">왜 이 필터?</div>
-            <p>위 전략들이 발굴한 종목에 한해 Amazon Chronos-mini(사전학습 시계열 AI)로 5거래일 수익률 분포를 계산합니다. 추세·패턴 기반 전략의 판단을 확률적으로 한 번 더 검증해, 기대수익은 있되 하방 리스크가 제한된 종목만 최종 매수 대기열에 올립니다.</p>
-          </div>
-          <div class="block">
-            <div class="block-title">통과 조건 (균형)</div>
-            <div class="flow">
-              <div class="flow-item"><span class="tag buy">조건1</span> 5일 수익률 중앙값(median) &gt; +1% — 기대 수익 존재</div>
-              <div class="flow-item"><span class="tag trail">조건2</span> 5일 수익률 하위 10%(p10) &gt; -5% — 하방 리스크 제한</div>
-              <div class="flow-item"><span class="tag sell">제외</span> 두 조건 중 하나라도 미충족 시 매수 대기열에서 제외</div>
-              <div class="flow-item"><span class="tag loss">장애</span> AI 서버 응답 없을 시 전략 판단 그대로 통과 (안전 폴백)</div>
             </div>
           </div>
         </div>
