@@ -130,11 +130,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { fetchConfig, fetchScans, fetchStrategyStats, fetchVersionPerformance, fetchStrategies, fetchStrategyMeta } from '../api.js'
 
-// strategies 테이블에 아예 없는 v1 완전 레거시 (bb_reversal·rsi_reversal)
-const PURE_LEGACY = {
-  bb_reversal:  { name: 'BB 반등',     version: 'v1' },
-  rsi_reversal: { name: 'RSI 역발산',  version: 'v1' },
-}
+// 모든 레거시 전략이 strategies 테이블로 이동됨 — 하드코딩 불필요
 
 const perfOpen = ref(false)
 const cfg = ref(null)
@@ -206,16 +202,16 @@ const scanCounts    = ref({})    // { strategy_id: count }
 const lastScanDate  = ref('-')
 const strategyStats = ref([])
 
-// 성과 테이블용 레이블 맵 (DB 전체 + 완전 레거시)
+// 성과 테이블용 레이블 맵 (DB type='strategy' 전체)
 const strategyLabelMap = computed(() => {
-  const map = Object.fromEntries(Object.entries(PURE_LEGACY).map(([k, v]) => [k, v.name]))
+  const map = {}
   strategyMeta.value.forEach(s => { map[s.id] = s.name })
   return map
 })
 
-// 전략 버전 맵 (DB 전체 + 완전 레거시)
+// 전략 버전 맵 (DB type='strategy' 전체)
 const strategyVersionMap = computed(() => {
-  const map = Object.fromEntries(Object.entries(PURE_LEGACY).map(([k, v]) => [k, v.version]))
+  const map = {}
   strategyMeta.value.forEach(s => { map[s.id] = s.version ?? 'v1' })
   return map
 })

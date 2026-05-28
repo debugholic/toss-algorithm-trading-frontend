@@ -125,8 +125,9 @@ export async function fetchStrategyMeta() {
   return data ?? []
 }
 
-// v1 레거시 전략 ID (strategies 테이블에 없지만 과거 거래에 존재)
-const LEGACY_STRATEGY_IDS = ['bb_reversal', 'rsi_reversal']
+// 과거 거래가 있었으나 strategies 테이블에 없는 완전 레거시 ID
+// rsi_reversal·ma_cross 는 DB에 있으므로 fetchStrategyStats 가 자동 포함
+const LEGACY_STRATEGY_IDS = []
 
 export async function fetchStrategyStats() {
   // strategies 테이블의 모든 type='strategy' 항목 (활성+비활성) — 과거 거래 포함
