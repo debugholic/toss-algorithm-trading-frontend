@@ -133,9 +133,7 @@ const usPendingCount = computed(() =>
 )
 
 const sortedScans = computed(() =>
-  [...scans.value]
-    .reverse()
-    .filter(entry => marketResults(entry).length > 0)
+  scans.value.filter(entry => marketResults(entry).length > 0)
 )
 
 const visibleScans = computed(() => sortedScans.value.slice(0, visibleCount.value))
