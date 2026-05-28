@@ -63,8 +63,8 @@ export async function fetchScans() {
   const { data, error } = await supabase
     .from('scan_history')
     .select('*')
-    .order('scanned_at', { ascending: true })
-    .limit(7)
+    .order('scanned_at', { ascending: false })
+    .limit(20)
   if (error) throw error
   return data
 }

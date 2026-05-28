@@ -274,14 +274,14 @@ onMounted(async () => {
   strategyStats.value = stats
 
   if (scans.length) {
-    const last = scans[scans.length - 1]
+    const last = scans[0]
     lastScanDate.value = last.scanned_at.slice(0, 10) + ' ' + last.scanned_at.slice(11, 16)
     last.results.forEach(r => {
       const sig = r.signal ?? ''
-      if (sig.includes('골든크로스'))       maCnt.value++
-      else if (sig.includes('RSI과매도'))   rsiCnt.value++
-      else if (sig.includes('BB반등'))      bbCnt.value++
-      else if (sig.includes('신고가'))      breakoutCnt.value++
+      if (sig.includes('골든크로스'))                    maCnt.value++
+      else if (sig.includes('RSI과매도') || sig.includes('RSI+BB') || sig.includes('RSI역발산')) rsiCnt.value++
+      else if (sig.includes('BB반등') || sig.includes('BB 반등'))  bbCnt.value++
+      else if (sig.includes('신고가'))                   breakoutCnt.value++
     })
   }
   await nextTick()
