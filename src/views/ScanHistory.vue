@@ -92,7 +92,8 @@ const isKR = code => /^\d{4,6}$/.test(code)
 
 function fmtDate(ts) {
   if (!ts) return '-'
-  return ts.slice(0, 10) + ' ' + ts.slice(11, 16)
+  const kst = new Date(new Date(ts).getTime() + 9 * 3600 * 1000)
+  return kst.toISOString().slice(0, 10) + ' ' + kst.toISOString().slice(11, 16) + ' KST'
 }
 
 function toggle(key) {
