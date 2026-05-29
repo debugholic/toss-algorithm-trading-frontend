@@ -27,13 +27,12 @@
       </div>
       <table v-else>
         <thead>
-          <tr><th>종목명</th><th>추세</th><th class="th-right">ADX</th></tr>
+          <tr><th>종목명</th><th>전략</th></tr>
         </thead>
         <tbody>
           <tr v-for="[code, v] in filteredPending" :key="code">
             <td>{{ v.name }}</td>
-            <td>{{ v.regime || '-' }}</td>
-            <td class="td-right">{{ v.adx != null ? v.adx.toFixed(1) : '-' }}</td>
+            <td>{{ fmtStrategy(v.strategy) }}</td>
           </tr>
         </tbody>
       </table>
@@ -55,14 +54,12 @@
           <div v-if="!marketResults(entry).length" class="empty">조건 충족 종목 없음</div>
           <table v-else>
             <thead>
-              <tr><th>종목명</th><th>신호</th><th>추세</th><th class="th-right">ADX</th><th class="th-right">현재가</th></tr>
+              <tr><th>종목명</th><th>신호</th><th class="th-right">현재가</th></tr>
             </thead>
             <tbody>
               <tr v-for="r in marketResults(entry)" :key="r.code">
                 <td>{{ r.name }}</td>
                 <td>{{ r.signal }}</td>
-                <td>{{ r.regime }}</td>
-                <td class="td-right">{{ r.adx }}</td>
                 <td class="td-right">{{ fmtPrice(r.price) }}</td>
               </tr>
             </tbody>
@@ -103,6 +100,18 @@ function toggle(key) {
 function fmtPrice(price) {
   if (price == null || price === '') return '-'
   return Number(price).toLocaleString()
+}
+
+const STRAT_LABELS = {
+  ma_cross: 'MA크로스', rsi_reversal: 'RSI역발산', bb_reversal: 'BB반등',
+  breakout_52w: '52주 신고가', rsi_bb_combo: 'RSI+BB복합', pullback: '눌림목',
+  consolidation: '조정구간', ma_cross_pending: '골든크로스 임박',
+  breakout_pending: '52주 고가 임박', volume_surge_pending: '거래량증가 임박',
+}
+function fmtStrategy(v) {
+  if (!v) return '-'
+  const arr = Array.isArray(v) ? v : ((() => { try { const p = JSON.parse(v); return Array.isArray(p) ? p : [v] } catch { return [v] } })())
+  return arr.map(x => STRAT_LABELS[x] || x).join('+')
 }
 
 function marketResults(entry) {
@@ -309,8 +318,7 @@ h2 { font-size: 15px; font-weight: 600; margin: 0; }
     margin-right: 8px;
   }
   .pending-section td:nth-child(1)::before { content: '종목명'; }
-  .pending-section td:nth-child(2)::before { content: '추세'; }
-  .pending-section td:nth-child(3)::before { content: 'ADX'; }
+  .pending-section td:nth-child(2)::before { content: '전략'; }
 
   .entry-body table, .entry-body thead, .entry-body tbody, .entry-body tr { display: block; }
   .entry-body thead { display: none; }
@@ -339,8 +347,6 @@ h2 { font-size: 15px; font-weight: 600; margin: 0; }
   }
   .entry-body td:nth-child(1)::before { content: '종목명'; }
   .entry-body td:nth-child(2)::before { content: '신호'; }
-  .entry-body td:nth-child(3)::before { content: '추세'; }
-  .entry-body td:nth-child(4)::before { content: 'ADX'; }
-  .entry-body td:nth-child(5)::before { content: '현재가'; }
+  .entry-body td:nth-child(3)::before { content: '현재가'; }
 }
 </style>
