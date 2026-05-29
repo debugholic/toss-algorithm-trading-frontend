@@ -88,7 +88,7 @@ const market = ref('KR')
 const pendingOpen = ref(false)
 const visibleCount = ref(5)
 
-const isKR = code => /^\d{4,6}$/.test(code)
+const isKR = code => /^\d/.test(code)  // KR 코드는 숫자로 시작 (우선주 00088K 등 포함), US 티커는 영문자
 
 function fmtDate(ts) {
   if (!ts) return '-'
