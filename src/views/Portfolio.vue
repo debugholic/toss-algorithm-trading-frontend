@@ -1,8 +1,8 @@
 <template>
   <div>
     <div class="page-header">
-      <h1>💼 포트폴리오 현황</h1>
-      <RouterLink to="/report" class="report-btn">📋 주간 리포트</RouterLink>
+      <h1>포트폴리오 현황</h1>
+      <RouterLink to="/report" class="report-btn">주간 리포트</RouterLink>
     </div>
 
     <div v-if="loading" class="empty">불러오는 중...</div>

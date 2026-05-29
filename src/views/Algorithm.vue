@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1>⚙️ 전략 현황</h1>
+    <h1>전략 현황</h1>
     <p class="caption" v-if="cfg">
       시장 국면(ADX+DI)에 따라 전략이 자동 선택됩니다 · 마지막 스캔: {{ lastScanDate }}
     </p>

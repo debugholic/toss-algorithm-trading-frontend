@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1>🔍 스캔 이력</h1>
+    <h1>스캔 이력</h1>
     <p class="caption">
       <span v-if="market === 'KR'">매일 15:35 KST 자동 스캔 · ADX 기준 전략 자동 선택</span>
       <span v-else>매일 06:05 KST 자동 스캔 · ADX 기준 전략 자동 선택</span>
