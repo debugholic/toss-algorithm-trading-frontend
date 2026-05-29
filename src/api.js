@@ -263,6 +263,28 @@ export async function fetchVersionPerformance() {
   })
 }
 
+export async function fetchLatestWeeklyReport() {
+  const { data, error } = await supabase
+    .from('weekly_reports')
+    .select('*')
+    .order('week_start', { ascending: false })
+    .limit(1)
+    .single()
+  if (error) return null
+  return data
+}
+
+export async function fetchLatestStrategyEvaluation() {
+  const { data, error } = await supabase
+    .from('strategy_evaluations')
+    .select('*')
+    .order('week_start', { ascending: false })
+    .limit(1)
+    .single()
+  if (error) return null
+  return data
+}
+
 export async function fetchConfig() {
   const { data, error } = await supabase
     .from('config')

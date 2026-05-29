@@ -1,6 +1,9 @@
 <template>
   <div>
-    <h1>💼 포트폴리오 현황</h1>
+    <div class="page-header">
+      <h1>💼 포트폴리오 현황</h1>
+      <RouterLink to="/report" class="report-btn">📋 주간 리포트</RouterLink>
+    </div>
 
     <div v-if="loading" class="empty">불러오는 중...</div>
     <template v-else>
@@ -227,7 +230,28 @@ onUnmounted(() => clearInterval(timer))
 </script>
 
 <style scoped>
-h1 { font-size: 22px; font-weight: 700; margin-bottom: 24px; }
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+h1 { font-size: 22px; font-weight: 700; }
+.report-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #2563eb;
+  color: #fff !important;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.report-btn:hover { background: #1d4ed8; }
 h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
 .exchange-rate { font-size: 12px; font-weight: 400; color: #888; background: #f3f4f6; padding: 2px 8px; border-radius: 10px; }
 
@@ -288,7 +312,9 @@ td:nth-child(2), td:nth-child(3), td:nth-child(4) { text-align: right; }
   h2 { font-size: 15px; }
   .metric { padding: 14px; }
   .section { padding: 16px; overflow-x: visible; margin-bottom: 16px; }
-  h1 { font-size: 18px; margin-bottom: 16px; }
+  h1 { font-size: 18px; }
+  .page-header { margin-bottom: 16px; }
+  .report-btn { padding: 7px 12px; font-size: 12px; }
 
   table, thead, tbody, tr { display: block; }
   thead { display: none; }
