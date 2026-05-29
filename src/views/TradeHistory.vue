@@ -3,8 +3,8 @@
     <div class="page-header">
       <h1>📋 매매 이력</h1>
       <div class="view-toggle">
-        <button :class="{ active: viewMode === 'calendar' }" @click="viewMode = 'calendar'">📅 달력</button>
-        <button :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">🔗 짝 목록</button>
+        <button :class="{ active: viewMode === 'calendar' }" @click="viewMode = 'calendar'">달력</button>
+        <button :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">목록</button>
       </div>
     </div>
 
