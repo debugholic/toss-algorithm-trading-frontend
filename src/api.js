@@ -154,7 +154,8 @@ export async function fetchStrategyStats() {
   allIds.forEach(s => { map[s] = { trades: 0, wins: 0, pnlSum: 0, pnlPctSum: 0 } })
 
   data.forEach(t => {
-    if (t.action?.toLowerCase() !== 'sell') return
+    const action = t.action?.toLowerCase()
+    if (action !== 'sell' && action !== 'stop') return
     // strategy가 "[\"ma_cross\"]" 형태의 JSON 배열 문자열로 저장된 경우 파싱
     let strategies = []
     if (Array.isArray(t.strategy)) {

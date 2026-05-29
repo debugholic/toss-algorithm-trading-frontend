@@ -168,7 +168,18 @@ const chartOptions = {
 const krPositions = computed(() => positions.value.filter(p => p.market !== 'US'))
 const usPositions = computed(() => positions.value.filter(p => p.market === 'US'))
 
-const labels = { ma_cross: 'MA크로스', rsi_reversal: 'RSI역발산', bb_reversal: 'BB반등', breakout_52w: '52주신고가' }
+const labels = {
+  ma_cross:              'MA크로스',
+  rsi_reversal:          'RSI역발산',
+  bb_reversal:           'BB반등',
+  breakout_52w:          '52주신고가',
+  rsi_bb_combo:          'RSI+BB복합',
+  pullback:              '눌림목',
+  consolidation:         '조정구간',
+  ma_cross_pending:      '골든크로스임박',
+  breakout_pending:      '52주고가임박',
+  volume_surge_pending:  '거래량증가임박',
+}
 const fmtStrategy = v => (Array.isArray(v) ? v : [v]).map(x => labels[x] || x).join('+')
 const fmt = n => {
   const rounded = Math.round(n)
