@@ -78,7 +78,7 @@
             <tbody>
               <tr v-for="(p, i) in selectedPairs" :key="i">
                 <td class="pair-name">
-                  <span class="mkt">{{ p.market === 'US' ? '🇺🇸' : '🇰🇷' }}</span>{{ p.name }}
+                  <span>{{ p.market === 'US' ? '🇺🇸' : '🇰🇷' }} {{ p.name }}</span>
                 </td>
                 <td class="strat-cell">{{ fmtStrategy(p.strategy) }}</td>
                 <td class="td-date">{{ p.buy_date ?? '-' }}</td>
@@ -169,7 +169,7 @@
             <tbody>
               <tr v-for="(p, i) in filteredPairs" :key="i">
                 <td class="pair-name">
-                  <span class="mkt">{{ p.market === 'US' ? '🇺🇸' : '🇰🇷' }}</span>{{ p.name }}
+                  <span>{{ p.market === 'US' ? '🇺🇸' : '🇰🇷' }} {{ p.name }}</span>
                 </td>
                 <td class="strat-cell">{{ fmtStrategy(p.strategy) }}</td>
                 <td class="td-date">{{ p.buy_date ?? '-' }}</td>
