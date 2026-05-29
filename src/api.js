@@ -179,6 +179,8 @@ export async function fetchStrategyStats() {
     return {
       strategy:  s,
       trades:    hasTrades ? m.trades : null,
+      wins:      hasTrades ? m.wins : null,
+      losses:    hasTrades ? m.trades - m.wins : null,
       winRate:   hasTrades ? Math.round((m.wins / m.trades) * 100) : null,
       avgPnlPct: hasTrades ? +(m.pnlPctSum / m.trades).toFixed(2) : null,
       totalPnl:  hasTrades ? Math.round(m.pnlSum) : null,
@@ -202,28 +204,49 @@ export async function fetchVersionPerformance() {
     .order('version', { ascending: true })
   if (!vErr && vData?.length) versions = vData
 
-  // 거래 데이터 (strategy_version 컬럼 포함)
+  // 전략 id → version 맵 (strategies 테이블 기준)
+  const { data: stratMeta } = await supabase
+    .from('strategies')
+    .select('id, version')
+  const stratVersionMap = {}
+  ;(stratMeta ?? []).forEach(s => { stratVersionMap[s.id] = s.version ?? 'v1' })
+
+  // 거래 데이터 (strategy 필드 포함 — 전략 고유 버전 조회용)
   const { data: trades, error: tErr } = await supabase
     .from('trades')
-    .select('strategy_version, action, pnl, pnl_pct')
+    .select('strategy, strategy_version, action, pnl, pnl_pct')
   if (tErr) throw tErr
+
+  // 거래의 strategy_version 대신 전략 자체의 version으로 분류
+  // (예: rsi_bb_combo = v2, ma_cross_pending = v3 — 전략이 어떤 버전에 도입됐는지 기준)
+  function resolveVersion(t) {
+    let sid = null
+    if (Array.isArray(t.strategy))         sid = t.strategy[0]
+    else if (typeof t.strategy === 'string') {
+      try { sid = JSON.parse(t.strategy)[0] } catch { sid = t.strategy }
+    }
+    if (sid && stratVersionMap[sid]) return stratVersionMap[sid]
+    return t.strategy_version || 'v1'
+  }
 
   // 버전별 집계
   const map = {}
   trades.forEach(t => {
-    const v = t.strategy_version || 'v1'
-    if (!map[v]) map[v] = { buys: 0, closed: 0, wins: 0, pnlSum: 0, pnlPctSum: 0 }
+    const v = resolveVersion(t)
+    if (!map[v]) map[v] = { buys: 0, closed: 0, wins: 0, pnlSum: 0, winPnl: 0, lossPnl: 0, pnlPctSum: 0 }
     if (t.action === 'buy') map[v].buys++
     if ((t.action === 'sell' || t.action === 'stop') && t.pnl != null) {
+      const pnl = Number(t.pnl) || 0
       map[v].closed++
-      if ((t.pnl ?? 0) > 0) map[v].wins++
-      map[v].pnlSum += t.pnl ?? 0
-      map[v].pnlPctSum += t.pnl_pct ?? 0
+      if (pnl > 0) { map[v].wins++; map[v].winPnl += pnl }
+      else          { map[v].lossPnl += pnl }
+      map[v].pnlSum    += pnl
+      map[v].pnlPctSum += Number(t.pnl_pct) || 0
     }
   })
 
   return versions.map(v => {
-    const m = map[v.version] ?? { buys: 0, closed: 0, wins: 0, pnlSum: 0, pnlPctSum: 0 }
+    const m = map[v.version] ?? { buys: 0, closed: 0, wins: 0, pnlSum: 0, winPnl: 0, lossPnl: 0, pnlPctSum: 0 }
     return {
       version:     v.version,
       name:        v.name,
@@ -233,6 +256,8 @@ export async function fetchVersionPerformance() {
       sell_count:  m.closed,
       win_rate:    m.closed > 0 ? Math.round(m.wins / m.closed * 1000) / 10 : null,
       total_pnl:   Math.round(m.pnlSum),
+      win_pnl:     Math.round(m.winPnl),
+      loss_pnl:    Math.round(m.lossPnl),
       avg_pnl_pct: m.closed > 0 ? Math.round(m.pnlPctSum / m.closed * 100) / 100 : null,
     }
   })
