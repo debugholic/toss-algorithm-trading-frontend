@@ -3,7 +3,7 @@
     <!-- 헤더 -->
     <div class="page-header">
       <div>
-        <h1>📋 주간 리포트</h1>
+        <h1>주간 리포트</h1>
         <div v-if="report" class="gen-time">생성: {{ fmtDatetime(report.generated_at) }}</div>
       </div>
       <RouterLink to="/" class="back-btn">← 포트폴리오</RouterLink>
@@ -89,7 +89,7 @@
           <div v-if="rw.best_trade?.ticker" class="highlight best">
             <div class="hl-badge">🏆 베스트</div>
             <div class="hl-body">
-              <span class="hl-ticker">{{ rw.best_trade.ticker }}</span>
+              <span class="hl-ticker">{{ rw.best_trade.name || rw.best_trade.ticker }}</span>
               <span class="hl-strat">{{ fmtStrategy(rw.best_trade.strategy) }}</span>
             </div>
             <div class="hl-nums">
@@ -100,7 +100,7 @@
           <div v-if="rw.worst_trade?.ticker" class="highlight worst">
             <div class="hl-badge">📉 워스트</div>
             <div class="hl-body">
-              <span class="hl-ticker">{{ rw.worst_trade.ticker }}</span>
+              <span class="hl-ticker">{{ rw.worst_trade.name || rw.worst_trade.ticker }}</span>
               <span class="hl-strat">{{ fmtStrategy(rw.worst_trade.strategy) }}</span>
             </div>
             <div class="hl-nums">
