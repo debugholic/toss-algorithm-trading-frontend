@@ -337,7 +337,16 @@ const selectedPairs = computed(() => {
 // ── 포맷 함수 ─────────────────────────────────────────────────
 function fmtStrategy(v) {
   if (!v) return '-'
-  return (Array.isArray(v) ? v : [v]).map(x => STRAT_LABELS[x] || x).join('+')
+  let arr
+  if (Array.isArray(v)) {
+    arr = v
+  } else if (typeof v === 'string') {
+    try { arr = JSON.parse(v) } catch { arr = [v] }
+    if (!Array.isArray(arr)) arr = [arr]
+  } else {
+    arr = [v]
+  }
+  return arr.map(x => STRAT_LABELS[x] || x).join('+')
 }
 
 function fmtPrice(price, market) {
