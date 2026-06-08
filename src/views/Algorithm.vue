@@ -242,13 +242,23 @@ onMounted(async () => {
   strategyMeta.value  = meta
 
   if (scans.length) {
+    // 마지막 스캔 표시 — 가장 최신 레코드 기준
     const last = scans[0]
     const kst  = new Date(new Date(last.scanned_at).getTime() + 9 * 3600 * 1000)
     lastScanDate.value = kst.toISOString().slice(0, 10) + ' ' + kst.toISOString().slice(11, 16) + ' KST'
 
+    // KR/US 스캔은 별도 레코드로 저장됨 (US는 regime이 '[US]'로 시작)
+    // 전략별 종목 수를 정확히 표시하려면 KR·US 최신 스캔 모두 집계해야 함
+    const lastKr = scans.find(s => !s.regime?.startsWith('[US]'))
+    const lastUs = scans.find(s =>  s.regime?.startsWith('[US]'))
+    const allResults = [
+      ...(lastKr?.results ?? []),
+      ...(lastUs?.results ?? []),
+    ]
+
     // strategy 필드 기반 집계 (r.strategy 가 없으면 signal 텍스트로 폴백)
     const counts = {}
-    last.results.forEach(r => {
+    allResults.forEach(r => {
       let sid = r.strategy
       if (!sid) {
         // 구형 스캔 레코드 폴백 — signal 텍스트 매칭
