@@ -34,6 +34,7 @@ export async function fetchPortfolio() {
       cash:          data.cash,
       usd_rate:      data.usd_rate ?? null,
     },
+    regime: data.regime ?? null,
     positions,
   }
 }

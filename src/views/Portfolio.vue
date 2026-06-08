@@ -5,6 +5,26 @@
       <RouterLink to="/report" class="report-btn">주간 리포트</RouterLink>
     </div>
 
+    <!-- 듀얼 모멘텀 게이트 현황 -->
+    <div v-if="regime" class="gate-banner" :class="gateClass">
+      <div class="gate-main">
+        <span class="gate-icon">{{ gateIcon }}</span>
+        <span class="gate-title">{{ gateTitle }}</span>
+      </div>
+      <div class="gate-markets">
+        <span class="gate-chip" :class="regime.kr_buyable ? 'ok' : 'block'">
+          🇰🇷 {{ regime.kr_buyable ? `매수 활성 ${regime.kr_ratio}%` : '매수 차단' }}
+        </span>
+        <span class="gate-chip" :class="regime.us_buyable ? 'ok' : 'block'">
+          🇺🇸 {{ regime.us_buyable ? `매수 활성 ${regime.us_ratio}%` : '매수 차단' }}
+        </span>
+        <span class="gate-chip cash">💵 현금 {{ regime.cash_ratio }}%</span>
+      </div>
+      <ul v-if="blockReasons.length" class="gate-reasons">
+        <li v-for="(r, i) in blockReasons" :key="i">{{ r }}</li>
+      </ul>
+    </div>
+
     <div v-if="loading" class="empty">불러오는 중...</div>
     <template v-else>
       <!-- 수익률 추이 차트 -->
@@ -133,10 +153,42 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 
 const loading = ref(true)
 const s = ref({ total_asset: 0, total_pnl: 0, total_pnl_pct: 0, total_eval: 0, kr_eval: 0, us_eval: 0, cash: 0, usd_rate: null })
+const regime = ref(null)
 const positions = ref([])
 const chartData = ref(null)
 const expandedRows = ref(new Set())
 let timer
+
+// 듀얼 모멘텀 게이트: none=정상 / partial=일부 차단 / all=전면 관망
+const gateState = computed(() => {
+  if (!regime.value) return null
+  const { kr_buyable, us_buyable } = regime.value
+  if (!kr_buyable && !us_buyable) return 'all'
+  if (!kr_buyable || !us_buyable) return 'partial'
+  return 'none'
+})
+const gateClass = computed(() => ({
+  'gate-danger': gateState.value === 'all',
+  'gate-warn':   gateState.value === 'partial',
+  'gate-ok':     gateState.value === 'none',
+}))
+const gateIcon = computed(() => ({ all: '🛑', partial: '⚠️', none: '✅' }[gateState.value] ?? ''))
+const gateTitle = computed(() => ({
+  all:     '듀얼 모멘텀: 전면 관망 — 양 시장 매수 차단',
+  partial: '듀얼 모멘텀: 일부 시장 매수 차단',
+  none:    '듀얼 모멘텀: 매수 활성',
+}[gateState.value] ?? ''))
+const blockReasons = computed(() => {
+  if (!regime.value) return []
+  const r = []
+  if (!regime.value.kr_buyable) {
+    r.push('🇰🇷 ' + (!regime.value.kr_abs_momentum ? 'KOSPI 1년 수익률 음수 — 절대 모멘텀 차단' : '국면 약세로 배분 0%'))
+  }
+  if (!regime.value.us_buyable) {
+    r.push('🇺🇸 ' + (!regime.value.us_abs_momentum ? 'QQQ 1년 수익률 음수 — 절대 모멘텀 차단' : '국면 약세로 배분 0%'))
+  }
+  return r
+})
 
 function toggle(code) {
   const next = new Set(expandedRows.value)
@@ -208,6 +260,7 @@ async function load() {
   try {
     const [data, history] = await Promise.all([fetchPortfolio(), fetchSnapshotHistory()])
     s.value = data.summary
+    regime.value = data.regime
     positions.value = data.positions
 
     if (history.length > 1) {
@@ -266,6 +319,34 @@ h1 { font-size: 22px; font-weight: 700; }
 .report-btn:hover { background: #1d4ed8; }
 h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
 .exchange-rate { font-size: 12px; font-weight: 400; color: #888; background: #f3f4f6; padding: 2px 8px; border-radius: 10px; }
+
+/* 듀얼 모멘텀 게이트 배너 */
+.gate-banner {
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border: 1.5px solid;
+}
+.gate-banner.gate-ok     { background: #f0fdf4; border-color: #bbf7d0; }
+.gate-banner.gate-warn   { background: #fffbeb; border-color: #fde68a; }
+.gate-banner.gate-danger { background: #fef2f2; border-color: #fecaca; }
+.gate-main { display: flex; align-items: center; gap: 8px; }
+.gate-icon { font-size: 18px; }
+.gate-title { font-size: 15px; font-weight: 700; }
+.gate-ok     .gate-title { color: #15803d; }
+.gate-warn   .gate-title { color: #b45309; }
+.gate-danger .gate-title { color: #b91c1c; }
+.gate-markets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.gate-chip {
+  font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 20px;
+  background: #f3f4f6; color: #4b5563;
+}
+.gate-chip.ok    { background: #dcfce7; color: #15803d; }
+.gate-chip.block { background: #fee2e2; color: #b91c1c; }
+.gate-chip.cash  { background: #eef2ff; color: #4338ca; }
+.gate-reasons { margin: 12px 0 0; padding-left: 18px; }
+.gate-reasons li { font-size: 12px; color: #6b7280; line-height: 1.7; }
 
 .metrics {
   display: grid;
