@@ -5,6 +5,13 @@
       <RouterLink to="/report" class="report-btn">주간 리포트</RouterLink>
     </div>
 
+    <!-- 트레이더 루프 무응답 경고 -->
+    <div v-if="staleLoops.length" class="dead-banner">
+      ⚠️ 트레이더 응답 없음 —
+      <span v-for="(l, i) in staleLoops" :key="l.flag">{{ i > 0 ? ' · ' : '' }}{{ l.flag }} {{ l.min }}분째 무신호</span>
+      <span class="dead-sub">서버(NAS) 컨테이너 상태를 확인하세요</span>
+    </div>
+
     <!-- 듀얼 모멘텀 게이트 현황 -->
     <div v-if="regime" class="gate-banner" :class="gateClass">
       <div class="gate-main">
@@ -147,17 +154,33 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
   LineElement, Tooltip, Filler
 } from 'chart.js'
-import { fetchPortfolio, fetchSnapshotHistory } from '../api.js'
+import { fetchPortfolio, fetchSnapshotHistory, fetchConfig } from '../api.js'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
 const loading = ref(true)
 const s = ref({ total_asset: 0, total_pnl: 0, total_pnl_pct: 0, total_eval: 0, kr_eval: 0, us_eval: 0, cash: 0, usd_rate: null })
 const regime = ref(null)
+const heartbeats = ref(null)
 const positions = ref([])
 const chartData = ref(null)
 const expandedRows = ref(new Set())
 let timer
+
+// 트레이더 루프 생존 감시 — config.data.heartbeat_kr/us ({at, ttl_min}) 기준
+// ttl_min 경과 시 무응답으로 판정 (스캔 중에는 백엔드가 ttl 90분으로 기록해 오탐 방지)
+const staleLoops = computed(() => {
+  if (!heartbeats.value) return []
+  const out = []
+  for (const [key, flag] of [['kr', '🇰🇷'], ['us', '🇺🇸']]) {
+    const hb = heartbeats.value[key]
+    if (!hb?.at) continue
+    const ttlMin = hb.ttl_min ?? 60
+    const elapsedMin = Math.floor((Date.now() - new Date(hb.at).getTime()) / 60000)
+    if (elapsedMin > ttlMin) out.push({ flag, min: elapsedMin })
+  }
+  return out
+})
 
 // 듀얼 모멘텀 게이트: none=정상 / partial=일부 차단 / all=전면 관망
 const gateState = computed(() => {
@@ -258,9 +281,14 @@ const fmtUsd = n => (n == null ? '-' : Number(n).toLocaleString('en-US', { minim
 
 async function load() {
   try {
-    const [data, history] = await Promise.all([fetchPortfolio(), fetchSnapshotHistory()])
+    const [data, history, cfg] = await Promise.all([
+      fetchPortfolio(),
+      fetchSnapshotHistory(),
+      fetchConfig().catch(() => null),
+    ])
     s.value = data.summary
     regime.value = data.regime
+    heartbeats.value = cfg ? { kr: cfg.heartbeat_kr, us: cfg.heartbeat_us } : null
     positions.value = data.positions
 
     if (history.length > 1) {
@@ -319,6 +347,19 @@ h1 { font-size: 22px; font-weight: 700; }
 .report-btn:hover { background: #1d4ed8; }
 h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
 .exchange-rate { font-size: 12px; font-weight: 400; color: #888; background: #f3f4f6; padding: 2px 8px; border-radius: 10px; }
+
+/* 트레이더 무응답 경고 배너 */
+.dead-banner {
+  border-radius: 12px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  border: 1.5px solid #fca5a5;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 14px;
+  font-weight: 700;
+}
+.dead-sub { display: block; margin-top: 4px; font-size: 12px; font-weight: 500; color: #ef4444; }
 
 /* 듀얼 모멘텀 게이트 배너 */
 .gate-banner {
