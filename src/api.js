@@ -81,20 +81,13 @@ export async function fetchPending() {
 }
 
 export async function fetchSnapshotHistory() {
-  const { data, error } = await supabase
-    .from('portfolio_snapshots')
-    .select('snapshotted_at, total_pnl_pct')
-    .order('snapshotted_at', { ascending: true })
-    .limit(500)
+  // daily_pnl_history RPC: 날짜별(KST) 마지막 스냅샷만 집계해 반환 (오름차순)
+  // 기존 .limit(500) 방식은 오래된 500개만 가져와 차트가 초기 며칠에서 끊겼음
+  const { data, error } = await supabase.rpc('daily_pnl_history')
   if (error) throw error
-  // 날짜별 마지막 스냅샷 하나만 사용 (하루 여러 번 저장되는 경우 대비)
-  const byDate = {}
-  data.forEach(d => {
-    byDate[d.snapshotted_at.slice(0, 10)] = d
-  })
-  const result = Object.values(byDate).map(d => ({
-    date: d.snapshotted_at.slice(0, 10),
-    pnl_pct: Math.round(d.total_pnl_pct * 100) / 100,
+  const result = (data ?? []).map(d => ({
+    date: d.snap_date,
+    pnl_pct: Math.round(Number(d.pnl_pct) * 100) / 100,
   }))
   // 차트가 0%에서 시작하도록 첫 데이터 하루 전 날짜에 0 포인트 추가
   if (result.length > 0) {
