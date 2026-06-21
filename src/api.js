@@ -184,7 +184,6 @@ export async function fetchStrategyStats() {
 
 // config.py STRATEGY_CHANGELOG 와 동기화
 const VERSION_FALLBACK = [
-  { version: 'v1', name: 'MA 크로스·RSI 역발산',            since: '2026-01-01' },
   { version: 'v2', name: '눌림목·조정구간 혼합전략',         since: '2026-05-27' },
   { version: 'v3', name: '임박 신호 전략 + Chronos 필터',   since: '2026-05-28' },
 ]
@@ -195,7 +194,7 @@ export async function fetchVersionPerformance() {
   const { data: vData, error: vErr } = await supabase
     .from('strategy_versions')
     .select('*')
-    .order('version', { ascending: true })
+    .order('id', { ascending: true })
   if (!vErr && vData?.length) versions = vData
 
   // 전략 id → version 맵 (strategies 테이블 기준)
