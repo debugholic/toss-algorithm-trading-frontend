@@ -267,7 +267,6 @@ onMounted(async () => {
         else if (sig.includes('조정구간'))                         sid = 'consolidation'
         else if (sig.includes('RSI+BB'))                          sid = 'rsi_bb_combo'
         else if (sig.includes('신고가') && !sig.includes('임박')) sid = 'breakout_52w'
-        else if (sig.includes('골든크로스') && !sig.includes('임박')) sid = 'ma_cross'
         else if (sig.includes('골든크로스 임박'))                   sid = 'ma_cross_pending'
         else if (sig.includes('고가 임박'))                        sid = 'breakout_pending'
         else if (sig.includes('연속 양봉'))                        sid = 'volume_surge_pending'

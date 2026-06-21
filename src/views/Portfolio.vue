@@ -247,9 +247,6 @@ const krPositions = computed(() => positions.value.filter(p => p.market !== 'US'
 const usPositions = computed(() => positions.value.filter(p => p.market === 'US'))
 
 const labels = {
-  ma_cross:              'MA크로스',
-  rsi_reversal:          'RSI역발산',
-  bb_reversal:           'BB반등',
   breakout_52w:          '52주 신고가',
   rsi_bb_combo:          'RSI+BB복합',
   pullback:              '눌림목',
