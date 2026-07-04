@@ -190,12 +190,20 @@ const VERSION_FALLBACK = [
 
 export async function fetchVersionPerformance() {
   // 버전 메타데이터 — 테이블 없으면 폴백
+  // 테이블 스키마는 id/activated_at 컬럼이라 프론트 필드(version/since)로 정규화
   let versions = VERSION_FALLBACK
   const { data: vData, error: vErr } = await supabase
     .from('strategy_versions')
     .select('*')
     .order('id', { ascending: true })
-  if (!vErr && vData?.length) versions = vData
+  if (!vErr && vData?.length) {
+    versions = vData.map(v => ({
+      version:     v.version ?? v.id,
+      name:        v.name,
+      since:       v.since ?? v.activated_at?.slice(0, 10),
+      description: v.description,
+    }))
+  }
 
   // 전략 id → version 맵 (strategies 테이블 기준)
   const { data: stratMeta } = await supabase
