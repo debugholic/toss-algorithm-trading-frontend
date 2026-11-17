@@ -304,3 +304,19 @@ export async function fetchConfig() {
   if (error) throw error
   return data.data
 }
+
+// 장 마감 감시 리포트 — 시장별 최신 1건
+export async function fetchAiMonitors() {
+  const out = {}
+  for (const kind of ['monitor_kr', 'monitor_us']) {
+    const { data, error } = await supabase
+      .from('ai_reports')
+      .select('kind, created_at, status, data')
+      .eq('kind', kind)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    if (error) throw error
+    if (data?.[0]) out[kind] = data[0]
+  }
+  return out
+}

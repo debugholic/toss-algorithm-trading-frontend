@@ -33,6 +33,25 @@
       <span class="dead-sub">서버(NAS) 컨테이너 상태를 확인하세요</span>
     </div>
 
+    <!-- Claude 장 마감 감시 리포트 -->
+    <div v-for="m in aiMonitors" :key="m.kind" class="ai-card" :class="'ai-' + m.status">
+      <button class="ai-head" @click="toggleAi(m.kind)">
+        <span>{{ AI_ICON[m.status] || '🤖' }} {{ m.kind === 'monitor_us' ? '🇺🇸' : '🇰🇷' }} 감시 리포트 ·
+          <b>{{ m.data.result?.headline || (m.status === 'error' ? 'AI 분석 실패' : '코드 점검 결과') }}</b></span>
+        <span class="ai-at">{{ fmtKst(m.created_at) }} {{ aiOpen[m.kind] ? '▲' : '▼' }}</span>
+      </button>
+      <div v-if="aiOpen[m.kind]" class="ai-body">
+        <ul>
+          <li v-for="(a, i) in m.data.hard_alarms || []" :key="'h' + i" class="sev-critical">{{ a }}</li>
+          <li v-for="(f, i) in m.data.result?.findings || []" :key="i" :class="'sev-' + f.severity">
+            <b>{{ f.title }}</b> — {{ f.detail }}
+          </li>
+        </ul>
+        <p v-if="m.data.result?.summary" class="ai-summary">{{ m.data.result.summary }}</p>
+        <p v-if="m.data.error" class="ai-summary">오류: {{ m.data.error }}</p>
+      </div>
+    </div>
+
     <!-- 듀얼 모멘텀 게이트 현황 -->
     <div v-if="regime" class="gate-banner" :class="gateClass">
       <div class="gate-main">
@@ -189,7 +208,7 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
   LineElement, Tooltip, Filler
 } from 'chart.js'
-import { fetchPortfolio, fetchSnapshotHistory, fetchConfig } from '../api.js'
+import { fetchPortfolio, fetchSnapshotHistory, fetchConfig, fetchAiMonitors } from '../api.js'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
@@ -201,6 +220,13 @@ const snapshotAt = ref(null)
 const cfgData = ref(null)
 const diagOpen = ref(false)
 const now = ref(Date.now())
+const aiReports = ref({})
+const aiOpen = ref({})
+const AI_ICON = { ok: '✅', warn: '⚠️', critical: '🚨', error: '❔' }
+// 하루 넘게 지난 리포트는 숨김 — 오래된 경고가 현재 상태처럼 보이지 않게
+const aiMonitors = computed(() => Object.values(aiReports.value)
+  .filter(m => now.value - new Date(m.created_at).getTime() < 36 * 3600 * 1000))
+function toggleAi(kind) { aiOpen.value = { ...aiOpen.value, [kind]: !aiOpen.value[kind] } }
 const s = ref({ total_asset: 0, total_pnl: 0, total_pnl_pct: 0, total_eval: 0, kr_eval: 0, us_eval: 0, cash: 0, usd_rate: null })
 const regime = ref(null)
 const heartbeats = ref(null)
@@ -365,6 +391,7 @@ async function load() {
       fetchSnapshotHistory(),
       fetchConfig().catch(() => null),
     ])
+    aiReports.value = await fetchAiMonitors().catch(() => aiReports.value)
     s.value = data.summary
     regime.value = data.regime
     snapshotAt.value = data.snapshotted_at
@@ -433,6 +460,21 @@ h1 { font-size: 22px; font-weight: 700; }
 .report-btn:hover { background: #1d4ed8; }
 h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
 .exchange-rate { font-size: 12px; font-weight: 400; color: #888; background: #f3f4f6; padding: 2px 8px; border-radius: 10px; }
+
+/* Claude 감시 리포트 */
+.ai-card { border-radius: 12px; margin-bottom: 12px; border: 1.5px solid #e5e7eb; background: #fff; }
+.ai-card.ai-ok { border-color: #bbf7d0; background: #f0fdf4; }
+.ai-card.ai-warn { border-color: #fde68a; background: #fffbeb; }
+.ai-card.ai-critical { border-color: #fca5a5; background: #fef2f2; }
+.ai-head { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px; background: none; border: none; cursor: pointer; font-size: 13px; color: #374151; text-align: left; }
+.ai-at { font-size: 12px; color: #888; flex-shrink: 0; }
+.ai-body { padding: 0 16px 12px; font-size: 13px; }
+.ai-body ul { margin: 0; padding-left: 18px; }
+.ai-body li { line-height: 1.7; }
+.sev-critical { color: #b91c1c; }
+.sev-warn { color: #b45309; }
+.sev-info { color: #4b5563; }
+.ai-summary { margin: 8px 0 0; color: #4b5563; }
 
 /* 트레이더 무응답 경고 배너 */
 .dead-banner {
