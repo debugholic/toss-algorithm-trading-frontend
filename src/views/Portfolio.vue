@@ -1,14 +1,35 @@
 <template>
   <div>
     <div class="page-header">
-      <h1>포트폴리오 현황</h1>
+      <div>
+        <h1>포트폴리오 현황</h1>
+        <div class="meta-line">
+          <span v-if="snapshotAt" :class="{ 'stale-text': snapshotAgeMin > 60 }">
+            {{ fmtKst(snapshotAt) }} 기준 · {{ fmtAge(snapshotAgeMin) }}
+          </span>
+          <span v-if="botVersion"> · 봇 버전 {{ botVersion }}</span>
+        </div>
+      </div>
       <RouterLink to="/report" class="report-btn">주간 리포트</RouterLink>
+    </div>
+
+    <div v-if="loadError" class="dead-banner">
+      ⚠️ 데이터를 불러오지 못했습니다
+      <span class="dead-sub">{{ loadError }}{{ hasData ? ' — 아래는 마지막으로 불러온 값입니다' : '' }}</span>
+    </div>
+
+    <div v-if="configError" class="warn-banner">⚠️ 트레이더 상태(하트비트·진단)를 불러오지 못했습니다 — 응답 없음 여부를 확인할 수 없습니다</div>
+
+    <!-- 매매 본문이 계속 실패 중 (루프는 살아 있어도 손절·매수가 안 도는 상태) -->
+    <div v-for="f in loopFailures" :key="f.flag" class="dead-banner">
+      ⚠️ {{ f.flag }} 매매 루프 오류 — {{ fmtKst(f.at) }}
+      <span class="dead-sub">{{ f.error }}</span>
     </div>
 
     <!-- 트레이더 루프 무응답 경고 -->
     <div v-if="staleLoops.length" class="dead-banner">
       ⚠️ 트레이더 응답 없음 —
-      <span v-for="(l, i) in staleLoops" :key="l.flag">{{ i > 0 ? ' · ' : '' }}{{ l.flag }} {{ l.min }}분째 무신호</span>
+      <span v-for="(l, i) in staleLoops" :key="l.flag">{{ i > 0 ? ' · ' : '' }}{{ l.flag }} {{ l.min == null ? '하트비트 기록 없음' : l.min + '분째 무신호' }}</span>
       <span class="dead-sub">서버(NAS) 컨테이너 상태를 확인하세요</span>
     </div>
 
@@ -18,7 +39,8 @@
         <span class="gate-icon">{{ gateIcon }}</span>
         <span class="gate-title">{{ gateTitle }}</span>
       </div>
-      <div class="gate-markets">
+      <div v-if="gateState === 'unknown'" class="gate-reasons-text">{{ regime.desc || '판정 정보 없음' }}</div>
+      <div v-else class="gate-markets">
         <span class="gate-chip" :class="regime.kr_buyable ? 'ok' : 'block'">
           🇰🇷 {{ regime.kr_buyable ? `매수 활성 ${regime.kr_ratio}%` : '매수 차단' }}
         </span>
@@ -33,7 +55,7 @@
     </div>
 
     <div v-if="loading" class="empty">불러오는 중...</div>
-    <template v-else>
+    <template v-else-if="hasData">
       <!-- 수익률 추이 차트 -->
       <div class="section chart-section" v-if="chartData">
         <h2>수익률 추이</h2>
@@ -143,6 +165,19 @@
           </tbody>
         </table>
       </div>
+
+      <!-- 원격 진단에 쌓인 최근 경고·오류 -->
+      <div v-if="diagErrors.length" class="section">
+        <button class="diag-toggle" @click="diagOpen = !diagOpen">
+          <h2>최근 경고·오류 {{ diagErrors.length }}건 <span class="diag-at">진단 {{ fmtKst(diagAt) }}</span></h2>
+          <span>{{ diagOpen ? '▲' : '▼' }}</span>
+        </button>
+        <ul v-if="diagOpen" class="diag-list">
+          <li v-for="(e, i) in diagErrors" :key="i" :class="e.level === 'WARNING' ? 'warn' : 'err'">
+            <span class="diag-time">{{ e.at }}</span> [{{ e.level }}] {{ e.msg }}
+          </li>
+        </ul>
+      </div>
     </template>
   </div>
 </template>
@@ -159,6 +194,13 @@ import { fetchPortfolio, fetchSnapshotHistory, fetchConfig } from '../api.js'
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
 const loading = ref(true)
+const hasData = ref(false)
+const loadError = ref('')
+const configError = ref(false)
+const snapshotAt = ref(null)
+const cfgData = ref(null)
+const diagOpen = ref(false)
+const now = ref(Date.now())
 const s = ref({ total_asset: 0, total_pnl: 0, total_pnl_pct: 0, total_eval: 0, kr_eval: 0, us_eval: 0, cash: 0, usd_rate: null })
 const regime = ref(null)
 const heartbeats = ref(null)
@@ -174,9 +216,9 @@ const staleLoops = computed(() => {
   const out = []
   for (const [key, flag] of [['kr', '🇰🇷'], ['us', '🇺🇸']]) {
     const hb = heartbeats.value[key]
-    if (!hb?.at) continue
+    if (!hb?.at) { out.push({ flag, min: null }); continue }
     const ttlMin = hb.ttl_min ?? 60
-    const elapsedMin = Math.floor((Date.now() - new Date(hb.at).getTime()) / 60000)
+    const elapsedMin = Math.floor((now.value - new Date(hb.at).getTime()) / 60000)
     if (elapsedMin > ttlMin) out.push({ flag, min: elapsedMin })
   }
   return out
@@ -185,6 +227,8 @@ const staleLoops = computed(() => {
 // 듀얼 모멘텀 게이트: none=정상 / partial=일부 차단 / all=전면 관망
 const gateState = computed(() => {
   if (!regime.value) return null
+  // 판정 실패({error}) 나 필드 누락을 '차단' 으로 읽으면 거짓 '전면 관망' 경고가 뜬다
+  if (regime.value.error || regime.value.kr_buyable === undefined) return 'unknown'
   const { kr_buyable, us_buyable } = regime.value
   if (!kr_buyable && !us_buyable) return 'all'
   if (!kr_buyable || !us_buyable) return 'partial'
@@ -194,15 +238,17 @@ const gateClass = computed(() => ({
   'gate-danger': gateState.value === 'all',
   'gate-warn':   gateState.value === 'partial',
   'gate-ok':     gateState.value === 'none',
+  'gate-warn-unknown': gateState.value === 'unknown',
 }))
-const gateIcon = computed(() => ({ all: '🛑', partial: '⚠️', none: '✅' }[gateState.value] ?? ''))
+const gateIcon = computed(() => ({ all: '🛑', partial: '⚠️', none: '✅', unknown: '❔' }[gateState.value] ?? ''))
 const gateTitle = computed(() => ({
+  unknown: '듀얼 모멘텀: 판정 실패 — 매수 가능 여부를 알 수 없음',
   all:     '듀얼 모멘텀: 전면 관망 — 양 시장 매수 차단',
   partial: '듀얼 모멘텀: 일부 시장 매수 차단',
   none:    '듀얼 모멘텀: 매수 활성',
 }[gateState.value] ?? ''))
 const blockReasons = computed(() => {
-  if (!regime.value) return []
+  if (!regime.value || gateState.value === 'unknown') return []
   const r = []
   if (!regime.value.kr_buyable) {
     r.push('🇰🇷 ' + (!regime.value.kr_abs_momentum ? 'KOSPI 1년 수익률 음수 — 절대 모멘텀 차단' : '국면 약세로 배분 0%'))
@@ -221,6 +267,41 @@ function toggle(code) {
 }
 function isExpanded(code) {
   return expandedRows.value.has(code)
+}
+
+const snapshotAgeMin = computed(() =>
+  snapshotAt.value ? Math.floor((now.value - new Date(snapshotAt.value).getTime()) / 60000) : null)
+const botVersion = computed(() => {
+  const c = cfgData.value
+  return c?.heartbeat_kr?.version || c?.heartbeat_us?.version || c?.diag?.version || null
+})
+const diagErrors = computed(() => [...(cfgData.value?.diag?.errors ?? [])].reverse())
+const diagAt = computed(() => cfgData.value?.diag?.at)
+// 마지막 오류가 마지막 성공보다 나중이면 지금 매매 본문이 실패 중
+const loopFailures = computed(() => {
+  const c = cfgData.value
+  if (!c) return []
+  const out = []
+  for (const [key, flag] of [['kr', '🇰🇷'], ['us', '🇺🇸']]) {
+    const hb = c[`heartbeat_${key}`]
+    if (hb?.error_at && (!hb.ok_at || new Date(hb.error_at) > new Date(hb.ok_at))) {
+      out.push({ flag, at: hb.error_at, error: hb.error })
+    }
+  }
+  return out
+})
+
+function fmtKst(ts) {
+  if (!ts) return '-'
+  const k = new Date(new Date(ts).getTime() + 9 * 3600 * 1000).toISOString()
+  return `${k.slice(5, 10)} ${k.slice(11, 16)}`
+}
+function fmtAge(min) {
+  if (min == null) return ''
+  if (min < 1) return '방금'
+  if (min < 60) return `${min}분 전`
+  if (min < 60 * 24) return `${Math.floor(min / 60)}시간 전`
+  return `${Math.floor(min / 1440)}일 전`
 }
 
 const chartOptions = {
@@ -277,6 +358,7 @@ const fmt = n => {
 const fmtUsd = n => (n == null ? '-' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
 
 async function load() {
+  now.value = Date.now()
   try {
     const [data, history, cfg] = await Promise.all([
       fetchPortfolio(),
@@ -285,8 +367,13 @@ async function load() {
     ])
     s.value = data.summary
     regime.value = data.regime
+    snapshotAt.value = data.snapshotted_at
+    configError.value = !cfg
+    cfgData.value = cfg
     heartbeats.value = cfg ? { kr: cfg.heartbeat_kr, us: cfg.heartbeat_us } : null
     positions.value = data.positions
+    hasData.value = true
+    loadError.value = ''
 
     if (history.length > 1) {
       const isProfit = history[history.length - 1].pnl_pct >= 0
@@ -310,6 +397,8 @@ async function load() {
         }]
       }
     }
+  } catch (e) {
+    loadError.value = e?.message || String(e)
   } finally {
     loading.value = false
   }
@@ -368,6 +457,19 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; alig
 .gate-banner.gate-ok     { background: #f0fdf4; border-color: #bbf7d0; }
 .gate-banner.gate-warn   { background: #fffbeb; border-color: #fde68a; }
 .gate-banner.gate-danger { background: #fef2f2; border-color: #fecaca; }
+.gate-banner.gate-warn-unknown { background: #f9fafb; border-color: #d1d5db; }
+.gate-reasons-text { margin-top: 8px; font-size: 12px; color: #6b7280; }
+.meta-line { font-size: 12px; color: #888; margin-top: 4px; }
+.stale-text { color: #b45309; font-weight: 600; }
+.warn-banner { border-radius: 12px; padding: 12px 20px; margin-bottom: 20px; border: 1.5px solid #fde68a; background: #fffbeb; color: #b45309; font-size: 13px; font-weight: 600; }
+.diag-toggle { width: 100%; display: flex; justify-content: space-between; align-items: center; background: none; border: none; padding: 0; cursor: pointer; color: inherit; }
+.diag-toggle h2 { margin-bottom: 0; }
+.diag-at { font-size: 12px; font-weight: 400; color: #888; }
+.diag-list { margin: 12px 0 0; padding: 0; list-style: none; font-size: 12px; font-family: ui-monospace, monospace; }
+.diag-list li { padding: 6px 0; border-bottom: 1px solid #f0f0f0; white-space: normal; word-break: break-all; }
+.diag-list li.warn { color: #b45309; }
+.diag-list li.err { color: #b91c1c; }
+.diag-time { color: #999; }
 .gate-main { display: flex; align-items: center; gap: 8px; }
 .gate-icon { font-size: 18px; }
 .gate-title { font-size: 15px; font-weight: 700; }

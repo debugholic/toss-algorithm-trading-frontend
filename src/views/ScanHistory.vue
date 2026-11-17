@@ -2,8 +2,8 @@
   <div>
     <h1>스캔 이력</h1>
     <p class="caption">
-      <span v-if="market === 'KR'">매일 15:35 KST 자동 스캔 · 우선순위 기반 전략 자동 선택</span>
-      <span v-else>매일 06:05 KST 자동 스캔 · 우선순위 기반 전략 자동 선택</span>
+      <span v-if="market === 'KR'">매일 15:35 KST 자동 스캔 · 장 중 30분마다 즉시 매수 스캔</span>
+      <span v-else>매일 06:05 KST 자동 스캔 · 장 중 30분마다 즉시 매수 스캔</span>
     </p>
 
     <div class="tabs">
@@ -38,6 +38,8 @@
       </table>
     </div>
 
+    <div v-if="loadError" class="error-box">⚠️ 불러오지 못했습니다 — {{ loadError }}</div>
+
     <div v-if="!visibleScans.length" class="empty">
       스캔 이력 없음. 매일 {{ market === 'KR' ? '15:35' : '06:05' }} KST 자동 실행됩니다.
     </div>
@@ -45,22 +47,26 @@
       <div v-for="entry in visibleScans" :key="entry.scanned_at" class="scan-entry">
         <button class="entry-header" @click="toggle(entry.scanned_at)">
           <span>
-            <span class="entry-icon">📅</span>
-            {{ fmtDate(entry.scanned_at) }} — {{ marketResults(entry).length }}종목
+            <span class="entry-icon">{{ isIntraday(entry) ? '⚡' : '📅' }}</span>
+            {{ fmtDate(entry.scanned_at) }}
+            <span v-if="isIntraday(entry)" class="intraday-tag">장중 매수</span>
+            — {{ marketResults(entry).length ? marketResults(entry).length + '종목' : '조건 충족 없음' }}
           </span>
           <span class="chevron">{{ open[entry.scanned_at] ? '▲' : '▼' }}</span>
         </button>
         <div v-if="open[entry.scanned_at]" class="entry-body">
+          <div v-if="entry.regime" class="regime-line">{{ entry.regime }}</div>
           <div v-if="!marketResults(entry).length" class="empty">조건 충족 종목 없음</div>
           <table v-else>
             <thead>
-              <tr><th>종목명</th><th>신호</th><th class="th-right">현재가</th></tr>
+              <tr><th>종목명</th><th>신호</th><th class="th-right">현재가</th><th v-if="isIntraday(entry)">결과</th></tr>
             </thead>
             <tbody>
               <tr v-for="r in marketResults(entry)" :key="r.code">
                 <td>{{ r.name }}</td>
                 <td>{{ r.signal }}</td>
                 <td class="td-right">{{ fmtPrice(r.price) }}</td>
+                <td v-if="isIntraday(entry)" :class="r.outcome === '매수' ? 'bought' : 'muted'">{{ r.outcome || '-' }}</td>
               </tr>
             </tbody>
           </table>
@@ -84,6 +90,7 @@ const open = ref({})
 const market = ref('KR')
 const pendingOpen = ref(false)
 const visibleCount = ref(5)
+const loadError = ref('')
 
 const isKR = code => /^\d/.test(code)  // KR 코드는 숫자로 시작 (우선주 00088K 등 포함), US 티커는 영문자
 
@@ -111,6 +118,17 @@ function fmtStrategy(v) {
   if (!v) return '-'
   const arr = Array.isArray(v) ? v : ((() => { try { const p = JSON.parse(v); return Array.isArray(p) ? p : [v] } catch { return [v] } })())
   return arr.map(x => STRAT_LABELS[x] || x).join('+')
+}
+
+const isIntraday = entry => (entry.regime ?? '').includes('장중')
+
+// US 스캔은 regime 이 '[US' 로 시작 — 결과 0건이어도 어느 시장 스캔인지 알 수 있다
+function entryMarket(entry) {
+  const r = entry.regime ?? ''
+  if (r.startsWith('[US')) return 'US'
+  if (r.startsWith('[KR')) return 'KR'
+  const first = entry.results?.[0]
+  return first && !isKR(first.code) ? 'US' : 'KR'
 }
 
 function marketResults(entry) {
@@ -142,7 +160,7 @@ const usPendingCount = computed(() =>
 )
 
 const sortedScans = computed(() =>
-  scans.value.filter(entry => marketResults(entry).length > 0)
+  scans.value.filter(entry => entryMarket(entry) === market.value)
 )
 
 const visibleScans = computed(() => sortedScans.value.slice(0, visibleCount.value))
@@ -151,7 +169,11 @@ const showMoreAvailable = computed(() => sortedScans.value.length > visibleCount
 const remainingCount = computed(() => sortedScans.value.length - visibleCount.value)
 
 onMounted(async () => {
-  [scans.value, pending.value] = await Promise.all([fetchScans(), fetchPending()])
+  try {
+    [scans.value, pending.value] = await Promise.all([fetchScans(), fetchPending()])
+  } catch (e) {
+    loadError.value = e?.message || String(e)
+  }
 })
 </script>
 
@@ -159,6 +181,11 @@ onMounted(async () => {
 h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 h2 { font-size: 15px; font-weight: 600; margin: 0; }
 .caption { color: #888; font-size: 13px; margin-bottom: 20px; }
+.error-box { background: #fef2f2; color: #b91c1c; border: 1.5px solid #fecaca; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; font-weight: 600; }
+.intraday-tag { font-size: 11px; font-weight: 700; color: #b45309; background: #fef3c7; padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
+.regime-line { font-size: 12px; color: #6b7280; padding: 8px 0 4px; }
+.bought { color: #15803d; font-weight: 600; }
+.muted { color: #9ca3af; }
 
 .tabs {
   display: flex;

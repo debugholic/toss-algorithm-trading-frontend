@@ -38,9 +38,10 @@ export async function fetchPortfolio() {
       kr_eval:       krEval,
       us_eval:       usEval,
       cash:          data.cash,
-      usd_rate:      data.usd_rate ?? null,
+      usd_rate:      data.usd_rate != null ? Number(data.usd_rate) : null,
     },
     regime: data.regime ?? null,
+    snapshotted_at: data.snapshotted_at,
     positions,
   }
 }
@@ -53,7 +54,9 @@ export async function fetchTrades() {
   if (error) throw error
   return data.map(t => ({
     date:     toKst(t.traded_at),
-    type:     t.action.toUpperCase(),
+    // 손절은 action 이 sell 로 같고 exit_reason 으로만 구분된다
+    type:     t.exit_reason === 'stop_loss' ? 'STOP' : t.action.toUpperCase(),
+    reason:   t.exit_reason ?? null,
     code:     t.ticker,
     name:     t.name,
     shares:   t.qty,
@@ -71,19 +74,19 @@ export async function fetchScans() {
     .from('scan_history')
     .select('*')
     .order('scanned_at', { ascending: false })
-    .limit(10)
+    .limit(40)   // 장 중 즉시 매수 기록이 섞이므로 넉넉히
   if (error) throw error
   return data
 }
 
+// id=1 KR, id=2 US 대기 주문
 export async function fetchPending() {
   const { data, error } = await supabase
     .from('pending_orders')
-    .select('data')
-    .eq('id', 1)
-    .single()
-  if (error) return {}
-  return data?.data ?? {}
+    .select('id, data')
+    .in('id', [1, 2])
+  if (error) throw error
+  return Object.assign({}, ...(data ?? []).map(r => r.data ?? {}))
 }
 
 export async function fetchSnapshotHistory() {

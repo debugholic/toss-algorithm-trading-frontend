@@ -1,6 +1,7 @@
 <template>
   <div>
     <h1>전략 현황</h1>
+    <div v-if="loadError" class="load-error">⚠️ 불러오지 못했습니다 — {{ loadError }}</div>
     <p class="caption" v-if="cfg">
       시장 국면(ADX+DI)에 따라 전략이 자동 선택됩니다 · 마지막 스캔: {{ lastScanDate }}
     </p>
@@ -226,15 +227,23 @@ function formatPnl(val) {
   return sign + val.toLocaleString()
 }
 
+const loadError = ref('')
+
 onMounted(async () => {
-  const [config, scans, stats, verPerf, strats, meta] = await Promise.all([
-    fetchConfig(),
-    fetchScans(),
-    fetchStrategyStats(),
-    fetchVersionPerformance().catch(() => []),
-    fetchStrategies().catch(() => []),
-    fetchStrategyMeta().catch(() => []),
-  ])
+  let config, scans, stats, verPerf, strats, meta
+  try {
+    [config, scans, stats, verPerf, strats, meta] = await Promise.all([
+      fetchConfig(),
+      fetchScans().then(list => list.filter(s => !(s.regime ?? '').includes('장중'))),   // 장 중 즉시 매수 기록 제외
+      fetchStrategyStats(),
+      fetchVersionPerformance().catch(() => []),
+      fetchStrategies().catch(() => []),
+      fetchStrategyMeta().catch(() => []),
+    ])
+  } catch (e) {
+    loadError.value = e?.message || String(e)
+    return
+  }
   cfg.value           = config
   strategyStats.value = stats
   versionPerf.value   = verPerf
@@ -282,6 +291,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.load-error { background: #fef2f2; color: #b91c1c; border: 1.5px solid #fecaca; border-radius: 12px; padding: 12px 16px; margin: 12px 0; font-size: 13px; font-weight: 600; }
 h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .caption { color: #888; font-size: 13px; margin-bottom: 24px; }
 .strategy-layout { display: flex; flex-direction: column; gap: 20px; overflow-x: hidden; }

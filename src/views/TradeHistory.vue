@@ -203,7 +203,8 @@ import { fetchTrades } from '../api.js'
 const trades      = ref([])
 const viewMode    = ref('calendar')
 const listFilter  = ref('all')
-const selectedMonth = ref(new Date().toISOString().slice(0, 7))
+// KST 기준 — UTC 로 정하면 매월 1일 00~09시에 전월이 뜬다
+const selectedMonth = ref(new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7))
 const selectedDate  = ref('')
 const holidays      = ref({})
 const fetchedYears  = new Set()
@@ -320,8 +321,9 @@ const filteredPairs = computed(() => {
   return allPairs.value
 })
 
-const winCount     = computed(() => allPairs.value.filter(p =>  p.sell_date && (p.pnl || 0) >= 0).length)
-const lossCount    = computed(() => allPairs.value.filter(p =>  p.sell_date && (p.pnl || 0) <  0).length)
+// 승 = 수익 > 0 (전략 통계 fetchStrategyStats 와 같은 기준)
+const winCount     = computed(() => allPairs.value.filter(p =>  p.sell_date && (p.pnl || 0) >  0).length)
+const lossCount    = computed(() => allPairs.value.filter(p =>  p.sell_date && (p.pnl || 0) <= 0).length)
 const holdingCount = computed(() => allPairs.value.filter(p => !p.sell_date).length)
 
 // 달력 상세: 선택 날짜에 SELL 이 있으면 짝 반환
@@ -354,13 +356,13 @@ function fmtPrice(price, market) {
 function exitLabel(p) {
   if (!p.exit_type) return '보유 중'
   if (p.exit_type === 'STOP') return '손절'
-  return (p.pnl || 0) >= 0 ? '익절' : '손매도'
+  return (p.pnl || 0) > 0 ? '익절' : '손매도'
 }
 
 function exitClass(p) {
   if (!p.exit_type) return 'badge-holding'
   if (p.exit_type === 'STOP') return 'badge-stop'
-  return (p.pnl || 0) >= 0 ? 'badge-win' : 'badge-loss'
+  return (p.pnl || 0) > 0 ? 'badge-win' : 'badge-loss'
 }
 
 // ── 달력 ──────────────────────────────────────────────────────
