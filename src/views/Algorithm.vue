@@ -98,11 +98,11 @@
             <span v-if="strat.type === 'strategy'" :class="['ver-badge', `ver-${strat.version ?? 'v1'}`]">{{ strat.version ?? 'v1' }}</span>
           </div>
           <div class="block">
-            <div class="block-title">{{ strat.type === 'filter' ? '왜 이 필터?' : '왜 이 전략?' }}</div>
+            <div class="block-title">{{ BLOCK_TITLES[strat.type]?.[0] ?? '왜 이 전략?' }}</div>
             <p>{{ strat.description }}</p>
           </div>
           <div class="block">
-            <div class="block-title">{{ strat.type === 'gate' ? '동작 흐름' : strat.type === 'filter' ? '통과 조건' : '매수 · 매도 흐름' }}</div>
+            <div class="block-title">{{ BLOCK_TITLES[strat.type]?.[1] ?? '매수 · 매도 흐름' }}</div>
             <div class="flow">
               <div
                 v-for="(step, i) in strat.flow"
@@ -110,6 +110,14 @@
                 class="flow-item"
               >
                 <span :class="['tag', step.tag]">{{ step.label }}</span>{{ step.text }}
+              </div>
+            </div>
+          </div>
+          <div v-if="strat.type === 'ai'" class="metric-row">
+            <div class="metric">
+              <div class="label">마지막 실행</div>
+              <div class="value ai-runs">
+                <span v-for="j in AI_JOBS" :key="j.key">{{ j.label }} {{ cfg.ai_last_run?.[j.key]?.slice(5) ?? '-' }}</span>
               </div>
             </div>
           </div>
@@ -134,6 +142,15 @@ import { fetchConfig, fetchScans, fetchStrategyStats, fetchVersionPerformance, f
 // 모든 레거시 전략이 strategies 테이블로 이동됨 — 하드코딩 불필요
 
 const perfOpen = ref(false)
+const BLOCK_TITLES = {
+  gate:   ['왜 이 게이트?', '동작 흐름'],
+  filter: ['왜 이 필터?', '통과 조건'],
+  ai:     ['무엇을 하나?', '일정'],
+}
+const AI_JOBS = [
+  { key: 'monitor_kr', label: '🇰🇷 감시' }, { key: 'monitor_us', label: '🇺🇸 감시' },
+  { key: 'label_outcomes', label: '결과 기록' }, { key: 'weekly', label: '주간' },
+]
 const cfg = ref(null)
 const gridRef = ref(null)
 
@@ -291,6 +308,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.metric .value.ai-runs { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; font-weight: 500; }
 .load-error { background: #fef2f2; color: #b91c1c; border: 1.5px solid #fecaca; border-radius: 12px; padding: 12px 16px; margin: 12px 0; font-size: 13px; font-weight: 600; }
 h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .caption { color: #888; font-size: 13px; margin-bottom: 24px; }
@@ -436,7 +454,7 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .badge.sideways { background: #ede9fe; color: #7c3aed; }
 .badge.pullback { background: #ffedd5; color: #ea580c; }
 .badge.pending  { background: #f3f4f6; color: #6b7280; }
-.badge.chronos  { background: #a7f3d0; color: #065f46; }
+.badge.ai       { background: #ede9fe; color: #6d28d9; }
 
 .block {}
 .block-title { font-size: 13px; font-weight: 700; color: #555; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }
@@ -460,7 +478,7 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .tag.loss  { background: #fef3c7; color: #d97706; }
 
 .metric-row { margin-top: auto; padding-top: 16px; border-top: 1px solid #f0f0f0; }
-.chronos-card { background: linear-gradient(160deg, #f0fdf4 0%, #fff 60%); border: 1.5px solid #bbf7d0; }
+.ai-card      { background: linear-gradient(160deg, #f5f3ff 0%, #fff 60%); border: 1.5px solid #c4b5fd; }
 .card-amber  { background: linear-gradient(160deg, #fffbf0 0%, #fff 60%); border: 1.5px solid #fcd34d; }
 .card-red    { background: linear-gradient(160deg, #fff5f5 0%, #fff 60%); border: 1.5px solid #fca5a5; }
 .card-orange { background: linear-gradient(160deg, #fff7ed 0%, #fff 60%); border: 1.5px solid #fdba74; }

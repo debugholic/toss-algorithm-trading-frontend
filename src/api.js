@@ -194,7 +194,7 @@ export async function fetchStrategyStats() {
 // config.py STRATEGY_CHANGELOG 와 동기화
 const VERSION_FALLBACK = [
   { version: 'v2', name: '눌림목·조정구간 혼합전략',         since: '2026-05-27' },
-  { version: 'v3', name: '임박 신호 전략 + Chronos 필터',   since: '2026-05-28' },
+  { version: 'v3', name: '임박 신호 전략',   since: '2026-05-28' },
 ]
 
 export async function fetchVersionPerformance() {
