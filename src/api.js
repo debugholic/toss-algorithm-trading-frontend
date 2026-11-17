@@ -1,5 +1,11 @@
 import { supabase } from './supabase.js'
 
+// timestamptz(UTC) → 'YYYY-MM-DD HH:MM' KST
+function toKst(ts) {
+  const kst = new Date(new Date(ts).getTime() + 9 * 3600 * 1000)
+  return kst.toISOString().slice(0, 16).replace('T', ' ')
+}
+
 export async function fetchPortfolio() {
   const { data, error } = await supabase
     .from('portfolio_snapshots')
@@ -46,7 +52,7 @@ export async function fetchTrades() {
     .order('traded_at', { ascending: true })
   if (error) throw error
   return data.map(t => ({
-    date:     t.traded_at.slice(0, 16).replace('T', ' '),
+    date:     toKst(t.traded_at),
     type:     t.action.toUpperCase(),
     code:     t.ticker,
     name:     t.name,
