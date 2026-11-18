@@ -183,7 +183,7 @@ h2 { font-size: 15px; font-weight: 600; margin: 0; }
 .caption { color: #888; font-size: 13px; margin-bottom: 20px; }
 .error-box { background: #fef2f2; color: #b91c1c; border: 1.5px solid #fecaca; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; font-weight: 600; }
 .intraday-tag { font-size: 11px; font-weight: 700; color: #b45309; background: #fef3c7; padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
-.regime-line { font-size: 12px; color: #6b7280; padding: 8px 0 4px; }
+.regime-line { font-size: 12px; color: #6b7280; padding: 8px 20px 4px; }
 .bought { color: #15803d; font-weight: 600; }
 .muted { color: #9ca3af; }
 
