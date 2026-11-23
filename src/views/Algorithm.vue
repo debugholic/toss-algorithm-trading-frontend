@@ -325,6 +325,7 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 .ver-badge.ver-v1 { background: #f0f0f0; color: #888; }
 .ver-badge.ver-v2 { background: #dbeafe; color: #1d4ed8; }
 .ver-badge.ver-v3 { background: #d1fae5; color: #059669; }
+.ver-badge.ver-v4 { background: #ede9fe; color: #6d28d9; }
 .ver-badge.active { background: #1a1a2e !important; color: #fff !important; }
 .ver-name { font-size: 12px; font-weight: 600; color: #555; }
 .ver-empty { font-size: 12px; color: #bbb; padding: 4px 0; }

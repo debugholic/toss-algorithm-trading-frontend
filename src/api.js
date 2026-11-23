@@ -195,6 +195,7 @@ export async function fetchStrategyStats() {
 const VERSION_FALLBACK = [
   { version: 'v2', name: '눌림목·조정구간 혼합전략',         since: '2026-05-27' },
   { version: 'v3', name: '임박 신호 전략',   since: '2026-05-28' },
+  { version: 'v4', name: '골든크로스 임박 ADX 25', since: '2026-11-23' },
 ]
 
 export async function fetchVersionPerformance() {
@@ -221,22 +222,22 @@ export async function fetchVersionPerformance() {
   const stratVersionMap = {}
   ;(stratMeta ?? []).forEach(s => { stratVersionMap[s.id] = s.version ?? 'v1' })
 
-  // 거래 데이터 (strategy 필드 포함 — 전략 고유 버전 조회용)
+  // 거래 데이터 (strategy 필드는 버전 기록이 없는 거래의 대체 조회용)
   const { data: trades, error: tErr } = await supabase
     .from('trades')
     .select('strategy, strategy_version, action, pnl, pnl_pct')
   if (tErr) throw tErr
 
-  // 거래의 strategy_version 대신 전략 자체의 version으로 분류
-  // (예: rsi_bb_combo = v2, ma_cross_pending = v3 — 전략이 어떤 버전에 도입됐는지 기준)
+  // 거래 시점의 버전(매수할 때 기록된 strategy_version)으로 분류 — 전략 규칙을 바꾸고 버전을 올리면
+  // 바꾸기 전 거래는 이전 버전에 남는다. 버전 기록이 없는 거래만 전략의 현재 버전으로 대신한다.
   function resolveVersion(t) {
+    if (t.strategy_version) return t.strategy_version
     let sid = null
     if (Array.isArray(t.strategy))         sid = t.strategy[0]
     else if (typeof t.strategy === 'string') {
       try { sid = JSON.parse(t.strategy)[0] } catch { sid = t.strategy }
     }
-    if (sid && stratVersionMap[sid]) return stratVersionMap[sid]
-    return t.strategy_version || 'v1'
+    return (sid && stratVersionMap[sid]) || 'v1'
   }
 
   // 버전별 집계
