@@ -197,6 +197,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { fetchLatestWeeklyReport, fetchLatestStrategyEvaluation } from '../api.js'
+import { STRATEGY_NAMES } from '../strategyNames.js'
 
 const loading  = ref(true)
 const report   = ref(null)
@@ -209,16 +210,7 @@ const hasStrategies     = computed(() => Object.keys(rd.value?.by_strategy ?? {}
 const hasEvalStrategies = computed(() => Object.keys(evalData.value?.data?.by_strategy ?? {}).length > 0)
 
 // 전략 라벨 맵
-const LABELS = {
-  breakout_52w:         '52주신고가',
-  rsi_bb_combo:         'RSI+BB복합',
-  pullback:             '눌림목',
-  consolidation:        '조정구간',
-  ma_cross_pending:     '골든크로스 임박',
-  breakout_pending:     '52주고가 임박',
-  volume_surge_pending: '거래량증가 임박',
-  buyback:              '자사주 공시',
-}
+const LABELS = STRATEGY_NAMES
 
 function stratLabel(sid) {
   if (!sid) return '-'

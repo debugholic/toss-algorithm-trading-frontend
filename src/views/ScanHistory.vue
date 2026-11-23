@@ -83,6 +83,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { fetchScans, fetchPending } from '../api.js'
+import { STRATEGY_NAMES } from '../strategyNames.js'
 
 const scans = ref([])
 const pending = ref({})
@@ -109,12 +110,7 @@ function fmtPrice(price) {
   return Number(price).toLocaleString()
 }
 
-const STRAT_LABELS = {
-  breakout_52w: '52주 신고가', rsi_bb_combo: 'RSI+BB복합', pullback: '눌림목',
-  consolidation: '조정구간', ma_cross_pending: '골든크로스 임박',
-  breakout_pending: '52주 고가 임박', volume_surge_pending: '거래량증가 임박',
-  buyback: '자사주 공시',
-}
+const STRAT_LABELS = STRATEGY_NAMES
 function fmtStrategy(v) {
   if (!v) return '-'
   const arr = Array.isArray(v) ? v : ((() => { try { const p = JSON.parse(v); return Array.isArray(p) ? p : [v] } catch { return [v] } })())
@@ -147,7 +143,7 @@ const filteredPending = computed(() =>
 const pendingGroups = computed(() => {
   const map = {}
   filteredPending.value.forEach(([, v]) => {
-    const key = v.regime || '기타'
+    const key = fmtStrategy(v.strategy)   // 추세유형(강한역추세 등) 대신 전략 이름 하나로
     map[key] = (map[key] ?? 0) + 1
   })
   return Object.entries(map).map(([regime, count]) => ({ regime, count }))
