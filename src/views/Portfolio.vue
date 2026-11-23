@@ -361,6 +361,7 @@ const labels = {
   ma_cross_pending:      '골든크로스 임박',
   breakout_pending:      '52주 고가 임박',
   volume_surge_pending:  '거래량증가 임박',
+  buyback:               '자사주 공시',
 }
 const fmtStrategy = v => {
   if (!v) return '-'

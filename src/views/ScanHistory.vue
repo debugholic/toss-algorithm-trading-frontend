@@ -113,6 +113,7 @@ const STRAT_LABELS = {
   breakout_52w: '52주 신고가', rsi_bb_combo: 'RSI+BB복합', pullback: '눌림목',
   consolidation: '조정구간', ma_cross_pending: '골든크로스 임박',
   breakout_pending: '52주 고가 임박', volume_surge_pending: '거래량증가 임박',
+  buyback: '자사주 공시',
 }
 function fmtStrategy(v) {
   if (!v) return '-'
