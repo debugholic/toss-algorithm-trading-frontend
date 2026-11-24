@@ -52,7 +52,7 @@
       </div>
     </div>
 
-    <!-- 듀얼 모멘텀 게이트 현황 -->
+    <!-- 매수 게이트 현황 (듀얼 모멘텀 + 국면 배분) -->
     <div v-if="regime" class="gate-banner" :class="gateClass">
       <div class="gate-main">
         <span class="gate-icon">{{ gateIcon }}</span>
@@ -60,8 +60,8 @@
       </div>
       <div v-if="gateState === 'unknown'" class="gate-reasons-text">{{ regime.desc || '판정 정보 없음' }}</div>
       <div v-else class="gate-markets">
-        <span class="gate-chip" :class="regime.kr_buyable ? 'ok' : 'block'">
-          🇰🇷 {{ regime.kr_buyable ? `매수 활성 ${regime.kr_ratio}%` : '매수 차단' }}
+        <span class="gate-chip" :class="regime.kr_buyable ? 'ok' : krExempt ? 'warn' : 'block'">
+          🇰🇷 {{ regime.kr_buyable ? `매수 활성 ${regime.kr_ratio}%` : krExempt ? `예외 전략만 ${regime.kr_exempt_ratio}%` : '매수 차단' }}
         </span>
         <span class="gate-chip" :class="regime.us_buyable ? 'ok' : 'block'">
           🇺🇸 {{ regime.us_buyable ? `매수 활성 ${regime.us_ratio}%` : '매수 차단' }}
@@ -251,13 +251,16 @@ const staleLoops = computed(() => {
   return out
 })
 
-// 듀얼 모멘텀 게이트: none=정상 / partial=일부 차단 / all=전면 관망
+// 국면 게이트가 KR 을 막아도 자사주 매입·RSI+BB 복합은 축소 예산으로 산다 (백엔드 BEAR_EXEMPT_STRATEGIES)
+const krExempt = computed(() => (regime.value?.kr_exempt?.length ?? 0) > 0)
+
+// 매수 게이트: none=정상 / partial=일부 차단 / all=전면 관망
 const gateState = computed(() => {
   if (!regime.value) return null
   // 판정 실패({error}) 나 필드 누락을 '차단' 으로 읽으면 거짓 '전면 관망' 경고가 뜬다
   if (regime.value.error || regime.value.kr_buyable === undefined) return 'unknown'
   const { kr_buyable, us_buyable } = regime.value
-  if (!kr_buyable && !us_buyable) return 'all'
+  if (!kr_buyable && !us_buyable && !krExempt.value) return 'all'
   if (!kr_buyable || !us_buyable) return 'partial'
   return 'none'
 })
@@ -269,19 +272,22 @@ const gateClass = computed(() => ({
 }))
 const gateIcon = computed(() => ({ all: '🛑', partial: '⚠️', none: '✅', unknown: '❔' }[gateState.value] ?? ''))
 const gateTitle = computed(() => ({
-  unknown: '듀얼 모멘텀: 판정 실패 — 매수 가능 여부를 알 수 없음',
-  all:     '듀얼 모멘텀: 전면 관망 — 양 시장 매수 차단',
-  partial: '듀얼 모멘텀: 일부 시장 매수 차단',
-  none:    '듀얼 모멘텀: 매수 활성',
+  unknown: '매수 게이트: 판정 실패 — 매수 가능 여부를 알 수 없음',
+  all:     '매수 게이트: 전면 관망 — 양 시장 매수 차단',
+  partial: '매수 게이트: 일부 제한',
+  none:    '매수 게이트: 매수 활성',
 }[gateState.value] ?? ''))
 const blockReasons = computed(() => {
   if (!regime.value || gateState.value === 'unknown') return []
   const r = []
   if (!regime.value.kr_buyable) {
-    r.push('🇰🇷 ' + (!regime.value.kr_abs_momentum ? 'KOSPI 1년 수익률 음수 — 절대 모멘텀 차단' : '국면 약세로 배분 0%'))
+    const names = (regime.value.kr_exempt || []).map(k => STRATEGY_NAMES[k] || k).join('·')
+    r.push('🇰🇷 ' + (!regime.value.kr_abs_momentum ? 'KOSPI 1년 수익률 음수 — 듀얼 모멘텀 차단'
+      : krExempt.value ? `국면 게이트(KODEX200 하락 추세) — ${names}만 축소 예산으로 매수`
+      : '국면 게이트(KODEX200 하락 추세)로 배분 0%'))
   }
   if (!regime.value.us_buyable) {
-    r.push('🇺🇸 ' + (!regime.value.us_abs_momentum ? 'QQQ 1년 수익률 음수 — 절대 모멘텀 차단' : '국면 약세로 배분 0%'))
+    r.push('🇺🇸 ' + (!regime.value.us_abs_momentum ? 'QQQ 1년 수익률 음수 — 듀얼 모멘텀 차단' : '국면 게이트(SPY 하락 추세)로 배분 0%'))
   }
   return r
 })
@@ -519,6 +525,7 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; alig
 }
 .gate-chip.ok    { background: #dcfce7; color: #15803d; }
 .gate-chip.block { background: #fee2e2; color: #b91c1c; }
+.gate-chip.warn  { background: #fef3c7; color: #b45309; }
 .gate-chip.cash  { background: #eef2ff; color: #4338ca; }
 .gate-reasons { margin: 12px 0 0; padding-left: 18px; }
 .gate-reasons li { font-size: 12px; color: #6b7280; line-height: 1.7; }
